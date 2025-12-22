@@ -2,11 +2,11 @@
 #[tokio::main]
 async fn main() {
     use axum::Router;
+    use axum_tracing_opentelemetry::middleware::{OtelAxumLayer, OtelInResponseLayer};
     use djv::app::*;
     use leptos::prelude::*;
     use leptos_axum::{generate_route_list, LeptosRoutes};
     use opentelemetry_configuration::OtelSdkBuilder;
-    use tower_http::trace::TraceLayer;
 
     let _guard = OtelSdkBuilder::new()
         .service_name(env!("CARGO_PKG_NAME"))
@@ -32,7 +32,8 @@ async fn main() {
             move || shell(leptos_options.clone())
         })
         .fallback(leptos_axum::file_and_error_handler(shell))
-        .layer(TraceLayer::new_for_http())
+        .layer(OtelInResponseLayer)
+        .layer(OtelAxumLayer::default())
         .with_state(leptos_options);
 
     if let Ok(socket_path) = std::env::var("DJV_SOCKET") {
