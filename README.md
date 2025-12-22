@@ -33,9 +33,11 @@ just build  # release build
 
 ```nix
 {
-  inputs.djv.url = "github:djvcom/djv";
+  inputs.djv.url = "github:djvcom/djv/stable";
 }
 ```
+
+The `stable` tag points to the latest commit that passed the full CI build pipeline, including the Nix package build. This ensures your NixOS config only updates to known-good versions.
 
 ### 2. Import module and enable service
 
