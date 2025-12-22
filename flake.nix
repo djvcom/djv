@@ -189,6 +189,12 @@
               default = "http://127.0.0.1:4318";
               description = "OpenTelemetry collector endpoint";
             };
+
+            group = lib.mkOption {
+              type = lib.types.str;
+              default = "nginx";
+              description = "Group for the socket (allows reverse proxy access)";
+            };
           };
 
           config = lib.mkIf cfg.enable {
@@ -213,6 +219,9 @@
                 RuntimeDirectoryMode = "0755";
 
                 DynamicUser = true;
+                Group = cfg.group;
+                UMask = "0002";
+
                 NoNewPrivileges = true;
                 ProtectSystem = "strict";
                 ProtectHome = true;

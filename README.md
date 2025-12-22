@@ -73,6 +73,7 @@ services.nginx.virtualHosts."djv.sh" = {
 | `services.djv.enable` | `false` | Enable the service |
 | `services.djv.environment` | `"production"` | Deployment environment (`deployment.environment.name`) |
 | `services.djv.socketPath` | `"/run/djv/djv.sock"` | Unix socket path |
+| `services.djv.group` | `"nginx"` | Group for socket (allows reverse proxy access) |
 | `services.djv.opentelemetryEndpoint` | `"http://127.0.0.1:4318"` | OTel collector endpoint |
 
 ## Observability
