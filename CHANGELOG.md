@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1](https://github.com/djvcom/djv/releases/tag/v0.1.1) - 2025-12-22
+
+### Fixed
+
+- *(nix)* add configurable group for socket permissions
+
+### Other
+
+- add stable tag workflow for NixOS deployments
+
 ## [0.1.0](https://github.com/djvcom/djv/releases/tag/v0.1.0) - 2025-12-22
 
 ### Added
