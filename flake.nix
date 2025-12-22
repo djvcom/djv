@@ -94,9 +94,7 @@
               || (craneLib.filterCargoSources path type);
           };
 
-        in
-        {
-          default = craneLib.buildPackage {
+          commonArgs = {
             inherit src;
             pname = "djv";
             version = "0.1.0";
@@ -108,29 +106,49 @@
 
             nativeBuildInputs = with pkgs; [
               pkg-config
-              cargo-leptos
-              binaryen
-              dart-sass
-              wasm-bindgen-cli
-              makeWrapper
             ];
-
-            # cargo-leptos handles its own multi-target build (wasm32 + native)
-            # so we skip crane's buildDepsOnly and let cargo-leptos manage deps
-            buildPhaseCargoCommand = ''
-              cargo leptos build --release
-            '';
-
-            installPhaseCommand = ''
-              mkdir -p $out/bin $out/share/djv
-              cp target/release/djv $out/bin/
-              cp -r target/site/* $out/share/djv/
-              wrapProgram $out/bin/djv \
-                --set LEPTOS_SITE_ROOT "$out/share/djv"
-            '';
-
-            doCheck = false;
           };
+
+          # Build deps separately using standard cargo check (not cargo-leptos)
+          # This vendors dependencies for the main build
+          cargoArtifacts = craneLib.buildDepsOnly commonArgs;
+
+        in
+        {
+          default = craneLib.buildPackage (
+            commonArgs
+            // {
+              inherit cargoArtifacts;
+
+              nativeBuildInputs = with pkgs; [
+                pkg-config
+                cargo-leptos
+                binaryen
+                dart-sass
+                wasm-bindgen-cli
+                makeWrapper
+              ];
+
+              # cargo-leptos handles its own multi-target build (wasm32 + native)
+              buildPhaseCargoCommand = ''
+                cargo leptos build --release
+              '';
+
+              # We handle installation ourselves since cargo-leptos doesn't produce
+              # the standard cargo build log that crane expects
+              doNotPostBuildInstallCargoBinaries = true;
+
+              installPhaseCommand = ''
+                mkdir -p $out/bin $out/share/djv
+                cp target/release/djv $out/bin/
+                cp -r target/site/* $out/share/djv/
+                wrapProgram $out/bin/djv \
+                  --set LEPTOS_SITE_ROOT "$out/share/djv"
+              '';
+
+              doCheck = false;
+            }
+          );
         }
       );
 
