@@ -94,7 +94,9 @@
               || (craneLib.filterCargoSources path type);
           };
 
-          commonArgs = {
+        in
+        {
+          default = craneLib.buildPackage {
             inherit src;
             pname = "djv";
             version = "0.1.0";
@@ -112,39 +114,23 @@
               wasm-bindgen-cli
               makeWrapper
             ];
+
+            # cargo-leptos handles its own multi-target build (wasm32 + native)
+            # so we skip crane's buildDepsOnly and let cargo-leptos manage deps
+            buildPhaseCargoCommand = ''
+              cargo leptos build --release
+            '';
+
+            installPhaseCommand = ''
+              mkdir -p $out/bin $out/share/djv
+              cp target/release/djv $out/bin/
+              cp -r target/site/* $out/share/djv/
+              wrapProgram $out/bin/djv \
+                --set LEPTOS_SITE_ROOT "$out/share/djv"
+            '';
+
+            doCheck = false;
           };
-
-          cargoArtifacts = craneLib.buildDepsOnly (
-            commonArgs
-            // {
-              pname = "djv-deps";
-              # Build deps for both targets
-              cargoExtraArgs = "--target-dir target";
-              CARGO_BUILD_TARGET = "";
-            }
-          );
-        in
-        {
-          default = craneLib.buildPackage (
-            commonArgs
-            // {
-              inherit cargoArtifacts;
-
-              buildPhaseCargoCommand = ''
-                cargo leptos build --release
-              '';
-
-              installPhaseCommand = ''
-                mkdir -p $out/bin $out/share/djv
-                cp target/release/djv $out/bin/
-                cp -r target/site/* $out/share/djv/
-                wrapProgram $out/bin/djv \
-                  --set LEPTOS_SITE_ROOT "$out/share/djv"
-              '';
-
-              doCheck = false;
-            }
-          );
         }
       );
 
