@@ -7,6 +7,7 @@
       url = "github:nix-community/fenix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    crane.url = "github:ipetkov/crane";
   };
 
   outputs =
@@ -14,19 +15,23 @@
       self,
       nixpkgs,
       fenix,
+      crane,
     }:
     let
       forAllSystems =
         fn:
         nixpkgs.lib.genAttrs nixpkgs.lib.systems.flakeExposed (
-          system: fn nixpkgs.legacyPackages.${system} fenix.packages.${system}
+          system: fn nixpkgs.legacyPackages.${system} fenix.packages.${system} system
         );
     in
     {
-      formatter = forAllSystems (pkgs: _: pkgs.nixfmt-rfc-style);
+      formatter = forAllSystems (
+        pkgs: _: _:
+        pkgs.nixfmt-rfc-style
+      );
 
       devShells = forAllSystems (
-        pkgs: fenixPkgs:
+        pkgs: fenixPkgs: _:
         let
           rustToolchain = fenixPkgs.combine [
             fenixPkgs.latest.cargo
@@ -70,49 +75,76 @@
       );
 
       packages = forAllSystems (
-        pkgs: fenixPkgs:
+        pkgs: fenixPkgs: _:
         let
           rustToolchain = fenixPkgs.combine [
             fenixPkgs.latest.cargo
             fenixPkgs.latest.rustc
             fenixPkgs.targets.wasm32-unknown-unknown.latest.rust-std
           ];
-        in
-        {
-          default = pkgs.stdenv.mkDerivation {
+
+          craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
+
+          src = pkgs.lib.cleanSourceWith {
+            src = ./.;
+            filter =
+              path: type:
+              (pkgs.lib.hasSuffix ".scss" path)
+              || (pkgs.lib.hasSuffix ".ico" path)
+              || (craneLib.filterCargoSources path type);
+          };
+
+          commonArgs = {
+            inherit src;
             pname = "djv";
             version = "0.1.0";
-
-            src = ./.;
+            strictDeps = true;
 
             buildInputs = with pkgs; [
               openssl
-              pkg-config
             ];
 
             nativeBuildInputs = with pkgs; [
-              rustToolchain
+              pkg-config
               cargo-leptos
               binaryen
               dart-sass
               wasm-bindgen-cli
               makeWrapper
             ];
-
-            buildPhase = ''
-              export HOME=$(mktemp -d)
-              export LEPTOS_OUTPUT_NAME=djv
-              cargo leptos build --release
-            '';
-
-            installPhase = ''
-              mkdir -p $out/bin $out/share/djv
-              cp target/release/djv $out/bin/
-              cp -r target/site/* $out/share/djv/
-              wrapProgram $out/bin/djv \
-                --set LEPTOS_SITE_ROOT "$out/share/djv"
-            '';
           };
+
+          cargoArtifacts = craneLib.buildDepsOnly (
+            commonArgs
+            // {
+              pname = "djv-deps";
+              # Build deps for both targets
+              cargoExtraArgs = "--target-dir target";
+              CARGO_BUILD_TARGET = "";
+            }
+          );
+        in
+        {
+          default = craneLib.buildPackage (
+            commonArgs
+            // {
+              inherit cargoArtifacts;
+
+              buildPhaseCargoCommand = ''
+                cargo leptos build --release
+              '';
+
+              installPhaseCommand = ''
+                mkdir -p $out/bin $out/share/djv
+                cp target/release/djv $out/bin/
+                cp -r target/site/* $out/share/djv/
+                wrapProgram $out/bin/djv \
+                  --set LEPTOS_SITE_ROOT "$out/share/djv"
+              '';
+
+              doCheck = false;
+            }
+          );
         }
       );
 
