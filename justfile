@@ -3,9 +3,12 @@ default:
 
 fmt:
     cargo fmt
+    nixfmt *.nix
 
 lint:
     cargo clippy --all-features -- -D warnings
+    statix check .
+    deadnix .
 
 test:
     cargo test
