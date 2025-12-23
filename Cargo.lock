@@ -1491,9 +1491,9 @@ dependencies = [
 
 [[package]]
 name = "opentelemetry-configuration"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d925bba8715fccaa0af0baeea9917ba8cec0346f797dcb2434c06ee6201912a"
+checksum = "1ac44c1a2a3e3d23defd89ca43bf5c5c65873d69dc685d49b68b13642fb3144e"
 dependencies = [
  "figment",
  "humantime-serde",
