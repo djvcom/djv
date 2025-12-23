@@ -88,3 +88,4 @@ Traces are exported via OTLP to the configured endpoint. Resource attributes inc
 ## Licence
 
 MIT
+# Breaking change in 0.2.0: Unix socket replaced with TCP binding
