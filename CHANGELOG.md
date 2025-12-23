@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0](https://github.com/djvcom/djv/compare/v0.1.1...v0.2.0) - 2025-12-23
+
+### Added
+
+- [**breaking**] replace unix socket with TCP binding
+- *(otel)* use axum-tracing-opentelemetry for proper OTel semantics ([#5](https://github.com/djvcom/djv/pull/5))
+
+### Fixed
+
+- *(release)* enable minor bumps for feat commits in 0.x
+
+### Other
+
+- trigger release detection
+- switch to TCP binding and runtime VCS attributes ([#7](https://github.com/djvcom/djv/pull/7))
+- *(deps)* update opentelemetry-configuration to 0.1.2 ([#6](https://github.com/djvcom/djv/pull/6))
+
 ## [0.1.1](https://github.com/djvcom/djv/releases/tag/v0.1.1) - 2025-12-22
 
 ### Fixed

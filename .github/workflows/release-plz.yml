@@ -22,10 +22,24 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Run release-plz
-        uses: release-plz/action@v0.5
-        with:
-          command: release-pr
+      - name: Install release-plz
+        run: cargo install release-plz --locked
+
+      - name: Checkout latest tag for comparison
+        run: |
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -n "$LATEST_TAG" ]; then
+            git worktree add /tmp/latest-release "$LATEST_TAG"
+            echo "REGISTRY_MANIFEST_PATH=/tmp/latest-release/Cargo.toml" >> "$GITHUB_ENV"
+          fi
+
+      - name: Run release-plz release-pr
+        run: |
+          if [ -n "$REGISTRY_MANIFEST_PATH" ]; then
+            release-plz release-pr --registry-manifest-path "$REGISTRY_MANIFEST_PATH"
+          else
+            release-plz release-pr
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -41,9 +55,23 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Run release-plz
-        uses: release-plz/action@v0.5
-        with:
-          command: release
+      - name: Install release-plz
+        run: cargo install release-plz --locked
+
+      - name: Checkout latest tag for comparison
+        run: |
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -n "$LATEST_TAG" ]; then
+            git worktree add /tmp/latest-release "$LATEST_TAG"
+            echo "REGISTRY_MANIFEST_PATH=/tmp/latest-release/Cargo.toml" >> "$GITHUB_ENV"
+          fi
+
+      - name: Run release-plz release
+        run: |
+          if [ -n "$REGISTRY_MANIFEST_PATH" ]; then
+            release-plz release --registry-manifest-path "$REGISTRY_MANIFEST_PATH"
+          else
+            release-plz release
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
