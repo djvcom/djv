@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0](https://github.com/djvcom/djv/compare/v0.2.0...v0.3.0) - 2025-12-23
+
+### Added
+
+- [**breaking**] replace unix socket with TCP binding
+- *(otel)* use axum-tracing-opentelemetry for proper OTel semantics ([#5](https://github.com/djvcom/djv/pull/5))
+- add OpenTelemetry instrumentation and NixOS deployment
+- *(homepage)* add skeleton layout with projects
+
+### Fixed
+
+- *(ci)* add git-token and fix release command args
+- *(release)* use git tag baseline for non-published packages
+- *(release)* enable minor bumps for feat commits in 0.x
+- *(nix)* add configurable group for socket permissions ([#3](https://github.com/djvcom/djv/pull/3))
+- *(nix)* configure crane for cargo-leptos builds
+- *(ci)* use nightly toolchain and fix nix build
+- *(nix)* use crane for sandboxed builds
+
+### Other
+
+- trigger release detection
+- switch to TCP binding and runtime VCS attributes ([#7](https://github.com/djvcom/djv/pull/7))
+- *(deps)* update opentelemetry-configuration to 0.1.2 ([#6](https://github.com/djvcom/djv/pull/6))
+- *(release)* prepare v0.1.1 ([#4](https://github.com/djvcom/djv/pull/4))
+- update stable tag after successful nix builds ([#2](https://github.com/djvcom/djv/pull/2))
+- release v0.1.0 ([#1](https://github.com/djvcom/djv/pull/1))
+- only run nix-build on pull requests
+- add comprehensive CI workflow and update action versions
+- add release-plz workflow and config
+- add justfile for common tasks
+- init leptos project
+
 ## [0.2.0](https://github.com/djvcom/djv/compare/v0.1.1...v0.2.0) - 2025-12-23
 
 ### Added
