@@ -8,3 +8,4 @@ publish = false
 [[package]]
 name = "djv"
 changelog_include = ["feat", "fix", "perf", "refactor", "docs"]
+features_always_increment_minor = true
