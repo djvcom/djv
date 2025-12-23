@@ -23,7 +23,9 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install release-plz
-        run: cargo install release-plz --locked
+        run: |
+          curl -sSL https://github.com/release-plz/release-plz/releases/latest/download/release-plz-x86_64-unknown-linux-gnu.tar.gz \
+            | tar xz -C /usr/local/bin
 
       - name: Checkout latest tag for comparison
         run: |
@@ -56,7 +58,9 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install release-plz
-        run: cargo install release-plz --locked
+        run: |
+          curl -sSL https://github.com/release-plz/release-plz/releases/latest/download/release-plz-x86_64-unknown-linux-gnu.tar.gz \
+            | tar xz -C /usr/local/bin
 
       - name: Run release-plz release
         run: release-plz release --git-token "$GITHUB_TOKEN"
