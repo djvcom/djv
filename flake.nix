@@ -172,10 +172,10 @@
               description = "The djv package to use";
             };
 
-            socketPath = lib.mkOption {
+            listenAddress = lib.mkOption {
               type = lib.types.str;
-              default = "/run/djv/djv.sock";
-              description = "Path to the Unix socket";
+              default = "127.0.0.1:3000";
+              description = "Address and port to listen on";
             };
 
             environment = lib.mkOption {
@@ -190,10 +190,16 @@
               description = "OpenTelemetry collector endpoint";
             };
 
-            group = lib.mkOption {
+            vcsRevision = lib.mkOption {
               type = lib.types.str;
-              default = "nginx";
-              description = "Group for the socket (allows reverse proxy access)";
+              default = "";
+              description = "Git commit hash for telemetry";
+            };
+
+            vcsRefName = lib.mkOption {
+              type = lib.types.str;
+              default = "";
+              description = "Git branch or tag name for telemetry";
             };
           };
 
@@ -204,9 +210,15 @@
               after = [ "network.target" ];
 
               environment = {
-                DJV_SOCKET = cfg.socketPath;
+                DJV_LISTEN = cfg.listenAddress;
                 OTEL_EXPORTER_OTLP_ENDPOINT = cfg.opentelemetryEndpoint;
                 OTEL_RESOURCE_ATTRIBUTES = "deployment.environment.name=${cfg.environment}";
+              }
+              // lib.optionalAttrs (cfg.vcsRevision != "") {
+                VCS_REF_HEAD_REVISION = cfg.vcsRevision;
+              }
+              // lib.optionalAttrs (cfg.vcsRefName != "") {
+                VCS_REF_HEAD_NAME = cfg.vcsRefName;
               };
 
               serviceConfig = {
@@ -215,12 +227,7 @@
                 Restart = "always";
                 RestartSec = 5;
 
-                RuntimeDirectory = "djv";
-                RuntimeDirectoryMode = "0755";
-
                 DynamicUser = true;
-                Group = cfg.group;
-                UMask = "0002";
 
                 NoNewPrivileges = true;
                 ProtectSystem = "strict";

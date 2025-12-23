@@ -8,18 +8,23 @@ async fn main() {
     use leptos_axum::{generate_route_list, LeptosRoutes};
     use opentelemetry_configuration::OtelSdkBuilder;
 
-    let _guard = OtelSdkBuilder::new()
+    let mut builder = OtelSdkBuilder::new()
         .service_name(env!("CARGO_PKG_NAME"))
         .service_version(env!("CARGO_PKG_VERSION"))
         .resource_attribute("vcs.repository.url.full", "https://github.com/djvcom/djv")
         .resource_attribute("vcs.repository.name", env!("CARGO_PKG_NAME"))
-        .resource_attribute("vcs.ref.head.revision", env!("VCS_REF_HEAD_REVISION"))
-        .resource_attribute("vcs.ref.head.name", env!("VCS_REF_HEAD_NAME"))
-        .resource_attribute("vcs.ref.head.type", "branch")
         .endpoint("http://127.0.0.1:4318")
-        .with_standard_env()
-        .build()
-        .expect("failed to initialise OpenTelemetry");
+        .with_standard_env();
+
+    if let Ok(revision) = std::env::var("VCS_REF_HEAD_REVISION") {
+        builder = builder.resource_attribute("vcs.ref.head.revision", revision);
+    }
+    if let Ok(name) = std::env::var("VCS_REF_HEAD_NAME") {
+        builder = builder.resource_attribute("vcs.ref.head.name", name);
+        builder = builder.resource_attribute("vcs.ref.head.type", "branch");
+    }
+
+    let _guard = builder.build().expect("failed to initialise OpenTelemetry");
 
     let conf = get_configuration(None).unwrap();
     let addr = conf.leptos_options.site_addr;
@@ -36,19 +41,16 @@ async fn main() {
         .layer(OtelAxumLayer::default())
         .with_state(leptos_options);
 
-    if let Ok(socket_path) = std::env::var("DJV_SOCKET") {
-        tracing::info!("listening on unix socket {}", &socket_path);
-        let listener = tokio::net::UnixListener::bind(&socket_path).unwrap();
-        axum::serve(listener, app.into_make_service())
-            .await
-            .unwrap();
-    } else {
-        tracing::info!("listening on http://{}", &addr);
-        let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
-        axum::serve(listener, app.into_make_service())
-            .await
-            .unwrap();
-    }
+    let addr = std::env::var("DJV_LISTEN")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(addr);
+
+    tracing::info!("listening on http://{}", &addr);
+    let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
+    axum::serve(listener, app.into_make_service())
+        .await
+        .unwrap();
 }
 
 #[cfg(not(feature = "ssr"))]
