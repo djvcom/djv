@@ -53,16 +53,16 @@ The `stable` tag points to the latest commit that passed the full CI build pipel
 }
 ```
 
-### 3. Configure nginx
+### 3. Configure reverse proxy
 
 ```nix
-services.nginx.virtualHosts."djv.sh" = {
-  forceSSL = true;
-  enableACME = true;
-  locations."/" = {
-    proxyPass = "http://unix:/run/djv/djv.sock";
-    proxyWebsocketUpgrade = true;
+services.traefik.dynamicConfigOptions.http = {
+  routers.djv = {
+    rule = "Host(`djv.sh`)";
+    service = "djv";
+    tls.certResolver = "letsencrypt";
   };
+  services.djv.loadBalancer.servers = [{ url = "http://127.0.0.1:3000"; }];
 };
 ```
 
@@ -71,10 +71,11 @@ services.nginx.virtualHosts."djv.sh" = {
 | Option | Default | Description |
 |--------|---------|-------------|
 | `services.djv.enable` | `false` | Enable the service |
+| `services.djv.listenAddress` | `"127.0.0.1:3000"` | Address and port to listen on |
 | `services.djv.environment` | `"production"` | Deployment environment (`deployment.environment.name`) |
-| `services.djv.socketPath` | `"/run/djv/djv.sock"` | Unix socket path |
-| `services.djv.group` | `"nginx"` | Group for socket (allows reverse proxy access) |
 | `services.djv.opentelemetryEndpoint` | `"http://127.0.0.1:4318"` | OTel collector endpoint |
+| `services.djv.vcsRevision` | `""` | Git commit hash for telemetry |
+| `services.djv.vcsRefName` | `""` | Git branch or tag name for telemetry |
 
 ## Observability
 
