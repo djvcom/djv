@@ -4,27 +4,29 @@ async fn main() {
     use axum::Router;
     use axum_tracing_opentelemetry::middleware::{OtelAxumLayer, OtelInResponseLayer};
     use djv::app::*;
+    use djv::proxy_headers::RecordProxyHeadersLayer;
     use leptos::prelude::*;
     use leptos_axum::{generate_route_list, LeptosRoutes};
-    use opentelemetry_configuration::OtelSdkBuilder;
+    use opentelemetry_configuration::{
+        capture_rust_build_info, ComputeEnvironment, OtelSdkBuilder,
+    };
 
-    let mut builder = OtelSdkBuilder::new()
+    let _guard = OtelSdkBuilder::new()
         .service_name(env!("CARGO_PKG_NAME"))
         .service_version(env!("CARGO_PKG_VERSION"))
+        .instrumentation_scope_name(env!("CARGO_PKG_NAME"))
+        .deployment_environment("production")
+        .compute_environment(ComputeEnvironment::Auto)
+        .with_rust_build_info(capture_rust_build_info!())
         .resource_attribute("vcs.repository.url.full", "https://github.com/djvcom/djv")
         .resource_attribute("vcs.repository.name", env!("CARGO_PKG_NAME"))
+        .resource_attribute("vcs.ref.head.revision", env!("VCS_REF_HEAD_REVISION"))
+        .resource_attribute("vcs.ref.head.name", env!("VCS_REF_HEAD_NAME"))
+        .resource_attribute("vcs.ref.head.type", "branch")
         .endpoint("http://127.0.0.1:4318")
-        .with_standard_env();
-
-    if let Ok(revision) = std::env::var("VCS_REF_HEAD_REVISION") {
-        builder = builder.resource_attribute("vcs.ref.head.revision", revision);
-    }
-    if let Ok(name) = std::env::var("VCS_REF_HEAD_NAME") {
-        builder = builder.resource_attribute("vcs.ref.head.name", name);
-        builder = builder.resource_attribute("vcs.ref.head.type", "branch");
-    }
-
-    let _guard = builder.build().expect("failed to initialise OpenTelemetry");
+        .with_standard_env()
+        .build()
+        .expect("failed to initialise OpenTelemetry");
 
     let conf = get_configuration(None).unwrap();
     let addr = conf.leptos_options.site_addr;
@@ -39,6 +41,7 @@ async fn main() {
         .fallback(leptos_axum::file_and_error_handler(shell))
         .layer(OtelInResponseLayer)
         .layer(OtelAxumLayer::default())
+        .layer(RecordProxyHeadersLayer)
         .with_state(leptos_options);
 
     let addr = std::env::var("DJV_LISTEN")
