@@ -1,21 +1,18 @@
-name: Datadog SCA
+on: [push]
 
-on:
-  push:
-    branches:
-      - main
+name: Datadog Software Composition Analysis
 
 jobs:
   software-composition-analysis:
-    name: Dependency scanning
     runs-on: ubuntu-latest
+    name: Datadog SBOM Generation and Upload
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Run Datadog SCA
-        uses: DataDog/datadog-sca-github-action@main
-        with:
-          dd_api_key: ${{ secrets.DD_API_KEY }}
-          dd_app_key: ${{ secrets.DD_APP_KEY }}
-          dd_site: datadoghq.com
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Check imported libraries are secure and compliant
+      id: datadog-software-composition-analysis
+      uses: DataDog/datadog-sca-github-action@main
+      with:
+        dd_api_key: ${{ secrets.DD_API_KEY }}
+        dd_app_key: ${{ secrets.DD_APP_KEY }}
+        dd_site: datadoghq.com
