@@ -1,6 +1,8 @@
 use std::process::Command;
 
 fn main() {
+    opentelemetry_configuration::emit_rustc_env();
+
     println!("cargo::rerun-if-changed=.git/HEAD");
     println!("cargo::rerun-if-changed=.git/refs/heads");
 

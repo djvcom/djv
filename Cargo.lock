@@ -450,6 +450,7 @@ dependencies = [
  "leptos_router",
  "opentelemetry-configuration",
  "tokio",
+ "tower",
  "tracing",
  "wasm-bindgen",
 ]
@@ -1491,9 +1492,9 @@ dependencies = [
 
 [[package]]
 name = "opentelemetry-configuration"
-version = "0.1.2"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ac44c1a2a3e3d23defd89ca43bf5c5c65873d69dc685d49b68b13642fb3144e"
+checksum = "fb7e7770ecd0729363fe78aaa7a0924b983c2d91a4b629790c73d6a45828eae3"
 dependencies = [
  "figment",
  "humantime-serde",
@@ -1501,6 +1502,8 @@ dependencies = [
  "opentelemetry-appender-tracing",
  "opentelemetry-otlp",
  "opentelemetry-proto",
+ "opentelemetry-resource-detectors",
+ "opentelemetry-semantic-conventions",
  "opentelemetry_sdk",
  "prost",
  "serde",
@@ -1558,6 +1561,17 @@ dependencies = [
  "serde_json",
  "tonic",
  "tonic-prost",
+]
+
+[[package]]
+name = "opentelemetry-resource-detectors"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e82845106cf72d47c141cee7f0d95e0650d8f28c6222a1f1ae727a8883899c19"
+dependencies = [
+ "opentelemetry",
+ "opentelemetry-semantic-conventions",
+ "opentelemetry_sdk",
 ]
 
 [[package]]
