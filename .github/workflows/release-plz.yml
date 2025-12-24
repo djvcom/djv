@@ -63,6 +63,18 @@ jobs:
             | tar xz -C /usr/local/bin
 
       - name: Run release-plz release
+        id: release
         run: release-plz release --git-token "$GITHUB_TOKEN"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Track deployment in Datadog
+        run: |
+          VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          npx @datadog/datadog-ci deployment mark \
+            --env production \
+            --service djv \
+            --revision "v${VERSION}"
+        env:
+          DD_API_KEY: ${{ secrets.DD_API_KEY }}
+          DD_BETA_COMMANDS_ENABLED: 1

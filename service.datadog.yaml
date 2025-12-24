@@ -1,0 +1,28 @@
+apiVersion: v3
+kind: service
+metadata:
+  name: djv
+  displayName: djv.sh
+  description: Personal homepage built with Leptos and Axum
+  owner: dan
+  contacts:
+    - type: email
+      contact: djverrall@gmail.com
+  links:
+    - name: Repository
+      type: repo
+      url: https://github.com/djvcom/djv
+    - name: Documentation
+      type: doc
+      url: https://github.com/djvcom/djv#readme
+  tags:
+    - service:djv
+    - env:production
+    - lang:rust
+spec:
+  lifecycle: production
+  tier: tier4
+extensions:
+  datadoghq.com/cd-visibility:
+    source:
+      - path: /**/*
