@@ -1,6 +1,7 @@
 #[cfg(feature = "ssr")]
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
+    use anyhow::Context;
     use axum::Router;
     use axum_tracing_opentelemetry::middleware::{OtelAxumLayer, OtelInResponseLayer};
     use djv::app::*;
@@ -11,9 +12,10 @@ async fn main() {
     use opentelemetry_configuration::{
         capture_rust_build_info, ComputeEnvironment, OtelSdkBuilder,
     };
+    use tower_http::compression::CompressionLayer;
 
     // Load configuration
-    let config = Config::load().expect("failed to load configuration");
+    let config = Config::load().context("failed to load configuration")?;
 
     // Build OTel SDK
     let mut otel_builder = OtelSdkBuilder::new()
@@ -37,7 +39,7 @@ async fn main() {
     let _guard = otel_builder
         .with_standard_env()
         .build()
-        .expect("failed to initialise OpenTelemetry");
+        .context("failed to initialise OpenTelemetry")?;
 
     // Initialise database pool if configured
     let db_pool = if let Some(ref db_config) = config.database {
@@ -103,7 +105,7 @@ async fn main() {
         spawn_sync_task(pool.clone(), sources, sync_config);
     }
 
-    let leptos_conf = get_configuration(None).unwrap();
+    let leptos_conf = get_configuration(None).context("failed to load Leptos configuration")?;
     let leptos_options = leptos_conf.leptos_options;
     let routes = generate_route_list(App);
 
@@ -113,6 +115,7 @@ async fn main() {
             move || shell(leptos_options.clone())
         })
         .fallback(leptos_axum::file_and_error_handler(shell))
+        .layer(CompressionLayer::new())
         .layer(OtelInResponseLayer)
         .layer(OtelAxumLayer::default())
         .layer(RecordProxyHeadersLayer)
@@ -127,13 +130,17 @@ async fn main() {
     let addr: std::net::SocketAddr = config
         .listen
         .parse()
-        .expect("invalid listen address in config");
+        .context("invalid listen address in config")?;
 
     tracing::info!("listening on http://{}", &addr);
-    let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
+    let listener = tokio::net::TcpListener::bind(&addr)
+        .await
+        .context("failed to bind to address")?;
     axum::serve(listener, app.into_make_service())
         .await
-        .unwrap();
+        .context("server error")?;
+
+    Ok(())
 }
 
 #[cfg(not(feature = "ssr"))]

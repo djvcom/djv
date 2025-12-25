@@ -19,6 +19,9 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
                 <meta charset="utf-8"/>
                 <meta name="viewport" content="width=device-width, initial-scale=1"/>
                 <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
+                <link rel="preconnect" href="https://fonts.googleapis.com"/>
+                <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+                <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
                 <AutoReload options=options.clone() />
                 <HydrationScripts options/>
                 <MetaTags/>
@@ -126,7 +129,7 @@ pub async fn fetch_contributions() -> Result<Vec<ContributionData>, ServerFnErro
 
     let Extension(pool): Extension<PgPool> = extract().await?;
 
-    let contributions = get_contributions(&pool, 10)
+    let contributions = get_contributions(&pool, 10, 2)
         .await
         .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?;
 

@@ -202,16 +202,19 @@ pub async fn upsert_contribution(
 pub async fn get_contributions(
     pool: &PgPool,
     limit: i64,
+    max_age_years: i32,
 ) -> Result<Vec<Contribution>, sqlx::Error> {
     let rows = sqlx::query(
         r#"
         SELECT id, forge, repo_owner, repo_name, repo_url, contribution_type, title, url, merged_at, synced_at
         FROM contributions
+        WHERE merged_at IS NULL OR merged_at > NOW() - INTERVAL '1 year' * $2
         ORDER BY merged_at DESC NULLS LAST
         LIMIT $1
         "#,
     )
     .bind(limit)
+    .bind(max_age_years)
     .fetch_all(pool)
     .await?;
 
