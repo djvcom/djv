@@ -6,6 +6,9 @@ pub mod db;
 #[cfg(feature = "ssr")]
 pub mod proxy_headers;
 
+#[cfg(feature = "ssr")]
+pub mod sync;
+
 #[cfg(feature = "hydrate")]
 #[wasm_bindgen::prelude::wasm_bindgen]
 pub fn hydrate() {

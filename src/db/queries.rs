@@ -8,6 +8,7 @@ use super::models::{Contribution, ProjectFilters, ProjectKind, ProjectView, Sort
 // Repository queries
 // ============================================================================
 
+#[allow(clippy::too_many_arguments)]
 pub async fn upsert_repository(
     pool: &PgPool,
     forge: &str,
@@ -64,6 +65,7 @@ pub async fn get_repository_by_url(pool: &PgPool, url: &str) -> Result<Option<Uu
 // Crate queries
 // ============================================================================
 
+#[allow(clippy::too_many_arguments)]
 pub async fn upsert_crate(
     pool: &PgPool,
     name: &str,
@@ -112,6 +114,7 @@ pub async fn upsert_crate(
 // NPM package queries
 // ============================================================================
 
+#[allow(clippy::too_many_arguments)]
 pub async fn upsert_npm_package(
     pool: &PgPool,
     name: &str,
@@ -157,6 +160,7 @@ pub async fn upsert_npm_package(
 // Contribution queries
 // ============================================================================
 
+#[allow(clippy::too_many_arguments)]
 pub async fn upsert_contribution(
     pool: &PgPool,
     forge: &str,

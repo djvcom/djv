@@ -90,7 +90,8 @@
             filter =
               path: type:
               (pkgs.lib.hasSuffix ".scss" path)
-              || (pkgs.lib.hasSuffix ".ico" path)
+              || (pkgs.lib.hasSuffix ".svg" path)
+              || (pkgs.lib.hasSuffix ".sql" path)
               || (craneLib.filterCargoSources path type);
           };
 
@@ -235,6 +236,30 @@
                 description = "Path to file containing database password (optional for socket auth)";
               };
             };
+
+            sync = {
+              enable = lib.mkEnableOption "background sync from code forges";
+
+              intervalSeconds = lib.mkOption {
+                type = lib.types.int;
+                default = 3600;
+                description = "Sync interval in seconds";
+              };
+
+              github = {
+                user = lib.mkOption {
+                  type = lib.types.nullOr lib.types.str;
+                  default = null;
+                  description = "GitHub username to sync repositories from";
+                };
+
+                tokenFile = lib.mkOption {
+                  type = lib.types.nullOr lib.types.path;
+                  default = null;
+                  description = "Path to file containing GitHub token (optional, increases rate limits)";
+                };
+              };
+            };
           };
 
           config = lib.mkIf cfg.enable {
@@ -271,11 +296,17 @@
                 }
                 // lib.optionalAttrs (dbUrl != null) {
                   DATABASE_URL = dbUrl;
+                }
+                // lib.optionalAttrs cfg.sync.enable {
+                  DJV_SYNC_ENABLED = "true";
+                  DJV_SYNC_INTERVAL = toString cfg.sync.intervalSeconds;
+                }
+                // lib.optionalAttrs (cfg.sync.github.user != null) {
+                  DJV_GITHUB_USER = cfg.sync.github.user;
                 };
 
               serviceConfig = {
                 Type = "simple";
-                ExecStart = "${cfg.package}/bin/djv";
                 Restart = "always";
                 RestartSec = 5;
 
@@ -285,7 +316,18 @@
                 ProtectSystem = "strict";
                 ProtectHome = true;
                 PrivateTmp = true;
+              }
+              // lib.optionalAttrs (cfg.sync.github.tokenFile == null) {
+                ExecStart = "${cfg.package}/bin/djv";
+              }
+              // lib.optionalAttrs (cfg.sync.github.tokenFile != null) {
+                LoadCredential = "github-token:${cfg.sync.github.tokenFile}";
               };
+
+              script = lib.mkIf (cfg.sync.github.tokenFile != null) ''
+                export DJV_GITHUB_TOKEN="$(cat $CREDENTIALS_DIRECTORY/github-token)"
+                exec ${cfg.package}/bin/djv
+              '';
             };
           };
         };

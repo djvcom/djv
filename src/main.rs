@@ -49,6 +49,24 @@ async fn main() {
         None
     };
 
+    // Spawn background sync task if database is available
+    if let Some(ref pool) = db_pool {
+        use djv::sync::{forges::GitHubForge, spawn_sync_task, SyncConfig, SyncSource};
+
+        let mut sources: Vec<Box<dyn SyncSource>> = Vec::new();
+
+        if let Some(github) = GitHubForge::from_env() {
+            sources.push(Box::new(github));
+        }
+
+        if !sources.is_empty() {
+            let config = SyncConfig::from_env();
+            spawn_sync_task(pool.clone(), sources, config);
+        } else {
+            tracing::info!("no sync sources configured");
+        }
+    }
+
     let conf = get_configuration(None).unwrap();
     let addr = conf.leptos_options.site_addr;
     let leptos_options = conf.leptos_options;
