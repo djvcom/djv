@@ -30,6 +30,7 @@ serde = { version = "1", features = ["derive"] }
 uuid = { version = "1", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 thiserror = { version = "2.0.17", optional = true }
+urlencoding = { version = "2.1.3", optional = true }
 
 [features]
 hydrate = [
@@ -49,6 +50,7 @@ ssr = [
     "dep:reqwest",
     "dep:async-trait",
     "dep:thiserror",
+    "dep:urlencoding",
     "leptos/ssr",
     "leptos_meta/ssr",
     "leptos_router/ssr",

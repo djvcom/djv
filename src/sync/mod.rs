@@ -1,10 +1,15 @@
+pub mod contributions;
 pub mod forges;
+pub mod registries;
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use std::time::Duration;
 use tokio::time::interval;
+
+pub use contributions::{ContributionsSync, FetchedContribution};
+pub use registries::{CratesIoRegistry, FetchedCrate};
 
 /// Repository data fetched from a forge (before database insertion)
 #[derive(Debug, Clone)]
@@ -74,17 +79,42 @@ impl SyncConfig {
     }
 }
 
-#[tracing::instrument(skip(pool, sources))]
-pub async fn run_sync(pool: &PgPool, sources: &[Box<dyn SyncSource>]) -> Result<(), SyncError> {
-    for source in sources {
-        sync_source(pool, source.as_ref()).await?;
+/// All sync sources bundled together
+pub struct SyncSources {
+    pub forges: Vec<Box<dyn SyncSource>>,
+    pub crates_io: Option<CratesIoRegistry>,
+    pub contributions: Option<ContributionsSync>,
+}
+
+impl SyncSources {
+    pub fn is_empty(&self) -> bool {
+        self.forges.is_empty() && self.crates_io.is_none() && self.contributions.is_none()
     }
+}
+
+#[tracing::instrument(skip(pool, sources))]
+pub async fn run_sync(pool: &PgPool, sources: &SyncSources) -> Result<(), SyncError> {
+    // Sync forges (repositories)
+    for source in &sources.forges {
+        sync_forge(pool, source.as_ref()).await?;
+    }
+
+    // Sync crates.io
+    if let Some(ref crates_io) = sources.crates_io {
+        sync_crates(pool, crates_io).await?;
+    }
+
+    // Sync contributions
+    if let Some(ref contributions) = sources.contributions {
+        sync_contributions(pool, contributions).await?;
+    }
+
     Ok(())
 }
 
 #[tracing::instrument(skip(pool, source), fields(source = source.name()))]
-async fn sync_source(pool: &PgPool, source: &dyn SyncSource) -> Result<(), SyncError> {
-    tracing::info!("starting sync");
+async fn sync_forge(pool: &PgPool, source: &dyn SyncSource) -> Result<(), SyncError> {
+    tracing::info!("starting forge sync");
 
     let repositories = source.fetch_repositories().await?;
     let count = repositories.len();
@@ -93,7 +123,74 @@ async fn sync_source(pool: &PgPool, source: &dyn SyncSource) -> Result<(), SyncE
         upsert_repository(pool, &repo).await?;
     }
 
-    tracing::info!(count, "sync complete");
+    tracing::info!(count, "forge sync complete");
+    Ok(())
+}
+
+#[tracing::instrument(skip(pool, crates_io))]
+async fn sync_crates(pool: &PgPool, crates_io: &CratesIoRegistry) -> Result<(), SyncError> {
+    tracing::info!("starting crates.io sync");
+
+    let crates = crates_io.fetch_crates().await?;
+    let count = crates.len();
+
+    for krate in crates {
+        // Try to find matching repository by URL
+        let repository_id = if let Some(ref repo_url) = krate.repository_url {
+            crate::db::get_repository_by_url(pool, repo_url).await?
+        } else {
+            None
+        };
+
+        crate::db::upsert_crate(
+            pool,
+            &krate.name,
+            krate.description.as_deref(),
+            repository_id,
+            &krate.crates_io_url,
+            krate.documentation_url.as_deref(),
+            krate.downloads,
+            krate.version.as_deref(),
+            &krate.keywords,
+            &krate.categories,
+        )
+        .await?;
+
+        tracing::debug!(name = %krate.name, "upserted crate");
+    }
+
+    tracing::info!(count, "crates.io sync complete");
+    Ok(())
+}
+
+#[tracing::instrument(skip(pool, contributions_sync))]
+async fn sync_contributions(
+    pool: &PgPool,
+    contributions_sync: &ContributionsSync,
+) -> Result<(), SyncError> {
+    tracing::info!("starting contributions sync");
+
+    let contributions = contributions_sync.fetch_contributions().await?;
+    let count = contributions.len();
+
+    for contrib in contributions {
+        crate::db::upsert_contribution(
+            pool,
+            &contrib.forge,
+            &contrib.repo_owner,
+            &contrib.repo_name,
+            &contrib.repo_url,
+            &contrib.contribution_type,
+            contrib.title.as_deref(),
+            &contrib.url,
+            contrib.merged_at,
+        )
+        .await?;
+
+        tracing::debug!(url = %contrib.url, "upserted contribution");
+    }
+
+    tracing::info!(count, "contributions sync complete");
     Ok(())
 }
 
@@ -117,9 +214,14 @@ async fn upsert_repository(pool: &PgPool, repo: &FetchedRepository) -> Result<()
     Ok(())
 }
 
-pub fn spawn_sync_task(pool: PgPool, sources: Vec<Box<dyn SyncSource>>, config: SyncConfig) {
+pub fn spawn_sync_task(pool: PgPool, sources: SyncSources, config: SyncConfig) {
     if !config.enabled {
         tracing::info!("sync disabled");
+        return;
+    }
+
+    if sources.is_empty() {
+        tracing::info!("no sync sources configured");
         return;
     }
 

@@ -51,20 +51,28 @@ async fn main() {
 
     // Spawn background sync task if database is available
     if let Some(ref pool) = db_pool {
-        use djv::sync::{forges::GitHubForge, spawn_sync_task, SyncConfig, SyncSource};
+        use djv::sync::{
+            forges::GitHubForge, spawn_sync_task, ContributionsSync, CratesIoRegistry, SyncConfig,
+            SyncSource, SyncSources,
+        };
 
-        let mut sources: Vec<Box<dyn SyncSource>> = Vec::new();
+        let mut forges: Vec<Box<dyn SyncSource>> = Vec::new();
 
         if let Some(github) = GitHubForge::from_env() {
-            sources.push(Box::new(github));
+            forges.push(Box::new(github));
         }
 
-        if !sources.is_empty() {
-            let config = SyncConfig::from_env();
-            spawn_sync_task(pool.clone(), sources, config);
-        } else {
-            tracing::info!("no sync sources configured");
-        }
+        let crates_io = CratesIoRegistry::from_env();
+        let contributions = ContributionsSync::from_env();
+
+        let sources = SyncSources {
+            forges,
+            crates_io,
+            contributions,
+        };
+
+        let config = SyncConfig::from_env();
+        spawn_sync_task(pool.clone(), sources, config);
     }
 
     let conf = get_configuration(None).unwrap();
