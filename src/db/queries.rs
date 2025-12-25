@@ -294,3 +294,18 @@ pub async fn get_projects(
 pub async fn get_all_projects(pool: &PgPool) -> Result<Vec<ProjectView>, sqlx::Error> {
     get_projects(pool, &ProjectFilters::default()).await
 }
+
+pub async fn get_distinct_topics(pool: &PgPool) -> Result<Vec<String>, sqlx::Error> {
+    let rows = sqlx::query(
+        r#"
+        SELECT DISTINCT unnest(topics) as topic
+        FROM projects
+        WHERE topics IS NOT NULL AND array_length(topics, 1) > 0
+        ORDER BY topic
+        "#,
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows.into_iter().map(|row| row.get("topic")).collect())
+}

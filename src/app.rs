@@ -6,7 +6,10 @@ use leptos_router::{
     StaticSegment,
 };
 
-use crate::components::{FilterBar, ProjectData, ProjectGrid, ProjectGridEmpty};
+use crate::components::{
+    ContributionData, ContributionsEmpty, ContributionsList, FilterBar, ProjectData, ProjectGrid,
+    ProjectGridEmpty, ProjectsPlaceholder,
+};
 
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
@@ -49,10 +52,17 @@ pub fn App() -> impl IntoView {
 pub struct ProjectFilters {
     pub kind: Option<String>,
     pub language: Option<String>,
+    pub topic: Option<String>,
     pub sort: Option<String>,
 }
 
 #[server(FetchProjects)]
+#[cfg_attr(feature = "ssr", tracing::instrument(skip_all, fields(
+    filter.kind = ?filters.kind,
+    filter.language = ?filters.language,
+    filter.topic = ?filters.topic,
+    filter.sort = ?filters.sort,
+)))]
 pub async fn fetch_projects(filters: ProjectFilters) -> Result<Vec<ProjectData>, ServerFnError> {
     use crate::db::{get_projects, ProjectFilters as DbFilters, ProjectKind, SortOrder};
     use axum::Extension;
@@ -67,7 +77,7 @@ pub async fn fetch_projects(filters: ProjectFilters) -> Result<Vec<ProjectData>,
             .as_deref()
             .and_then(|k| k.parse::<ProjectKind>().ok()),
         language: filters.language,
-        topic: None,
+        topic: filters.topic,
         sort: filters
             .sort
             .as_deref()
@@ -91,6 +101,46 @@ pub async fn fetch_projects(filters: ProjectFilters) -> Result<Vec<ProjectData>,
         .collect())
 }
 
+#[server(FetchTopics)]
+pub async fn fetch_topics() -> Result<Vec<String>, ServerFnError> {
+    use crate::db::get_distinct_topics;
+    use axum::Extension;
+    use leptos_axum::extract;
+    use sqlx::PgPool;
+
+    let Extension(pool): Extension<PgPool> = extract().await?;
+
+    let topics = get_distinct_topics(&pool)
+        .await
+        .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?;
+
+    Ok(topics)
+}
+
+#[server(FetchContributions)]
+pub async fn fetch_contributions() -> Result<Vec<ContributionData>, ServerFnError> {
+    use crate::db::get_contributions;
+    use axum::Extension;
+    use leptos_axum::extract;
+    use sqlx::PgPool;
+
+    let Extension(pool): Extension<PgPool> = extract().await?;
+
+    let contributions = get_contributions(&pool, 10)
+        .await
+        .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?;
+
+    Ok(contributions
+        .into_iter()
+        .map(|c| ContributionData {
+            repo_name: format!("{}/{}", c.repo_owner, c.repo_name),
+            title: c.title.unwrap_or_default(),
+            url: c.url,
+            merged_at: c.merged_at.map(|dt| dt.format("%Y-%m-%d").to_string()),
+        })
+        .collect())
+}
+
 #[component]
 fn HomePage() -> impl IntoView {
     let query = use_query_map();
@@ -100,32 +150,28 @@ fn HomePage() -> impl IntoView {
         ProjectFilters {
             kind: q.get("kind").map(|s| s.to_string()),
             language: q.get("language").map(|s| s.to_string()),
+            topic: q.get("topic").map(|s| s.to_string()),
             sort: q.get("sort").map(|s| s.to_string()),
         }
     });
 
     let projects = Resource::new(move || filters.get(), fetch_projects);
+    let topics = Resource::new(|| (), |_| fetch_topics());
+    let contributions = Resource::new(|| (), |_| fetch_contributions());
+
+    let navigate = leptos_router::hooks::use_navigate();
 
     let on_filter_change = Callback::new(move |(name, value): (String, Option<String>)| {
-        let navigate = leptos_router::hooks::use_navigate();
         let current = query.get();
 
         let mut params: Vec<(String, String)> = vec![];
 
         // Keep existing params, updating or removing the changed one
-        if let Some(k) = current.get("kind") {
-            if name != "kind" {
-                params.push(("kind".to_string(), k.to_string()));
-            }
-        }
-        if let Some(l) = current.get("language") {
-            if name != "language" {
-                params.push(("language".to_string(), l.to_string()));
-            }
-        }
-        if let Some(s) = current.get("sort") {
-            if name != "sort" {
-                params.push(("sort".to_string(), s.to_string()));
+        for key in ["kind", "language", "topic", "sort"] {
+            if let Some(v) = current.get(key) {
+                if name != key {
+                    params.push((key.to_string(), v.to_string()));
+                }
             }
         }
 
@@ -162,23 +208,45 @@ fn HomePage() -> impl IntoView {
                 <h2>"Projects"</h2>
                 {move || {
                     let f = current_filters.get();
+                    let available_topics = topics.get()
+                        .and_then(|r| r.ok())
+                        .unwrap_or_default();
                     view! {
                         <FilterBar
-                            kind_filter=f.kind
-                            language_filter=f.language
-                            sort_filter=f.sort
+                            kind_filter=f.kind.clone()
+                            language_filter=f.language.clone()
+                            topic_filter=f.topic.clone()
+                            sort_filter=f.sort.clone()
+                            topics=available_topics
                             on_filter_change=on_filter_change
                         />
                     }
                 }}
-                <Suspense fallback=move || view! { <ProjectGridEmpty /> }>
+                <Suspense fallback=move || view! { <ProjectsPlaceholder /> }>
                     {move || {
                         projects.get().map(|result| {
                             match result {
                                 Ok(data) if !data.is_empty() => {
                                     view! { <ProjectGrid projects=data /> }.into_any()
                                 }
-                                _ => view! { <ProjectGridEmpty /> }.into_any(),
+                                Ok(_) => view! { <ProjectGridEmpty /> }.into_any(),
+                                Err(_) => view! { <ProjectsPlaceholder /> }.into_any(),
+                            }
+                        })
+                    }}
+                </Suspense>
+            </section>
+
+            <section class="contributions">
+                <h2>"Contributions"</h2>
+                <Suspense fallback=move || view! { <ContributionsEmpty /> }>
+                    {move || {
+                        contributions.get().map(|result| {
+                            match result {
+                                Ok(data) if !data.is_empty() => {
+                                    view! { <ContributionsList contributions=data /> }.into_any()
+                                }
+                                _ => view! { <ContributionsEmpty /> }.into_any(),
                             }
                         })
                     }}

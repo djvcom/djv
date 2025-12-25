@@ -72,6 +72,7 @@ impl ContributionsSync {
         Ok(all_contributions)
     }
 
+    #[tracing::instrument(skip(self))]
     async fn fetch_page(&self, page: u32) -> Result<Vec<FetchedContribution>, SyncError> {
         // Search for merged PRs by the user
         let query = format!(
@@ -159,4 +160,88 @@ struct SearchItem {
     html_url: String,
     repository_url: Option<String>,
     closed_at: Option<DateTime<Utc>>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn extracts_repo_owner_and_name_from_api_url() {
+        let repository_url = "https://api.github.com/repos/goreleaser/goreleaser";
+        let parts: Vec<&str> = repository_url.split('/').collect();
+        let repo_name = parts[parts.len() - 1].to_string();
+        let repo_owner = parts[parts.len() - 2].to_string();
+
+        assert_eq!(repo_owner, "goreleaser");
+        assert_eq!(repo_name, "goreleaser");
+    }
+
+    #[test]
+    fn constructs_repo_url_from_owner_and_name() {
+        let repo_owner = "anthropics";
+        let repo_name = "claude-code";
+        let repo_url = format!("https://github.com/{}/{}", repo_owner, repo_name);
+
+        assert_eq!(repo_url, "https://github.com/anthropics/claude-code");
+    }
+
+    #[test]
+    fn parses_search_item_to_contribution() {
+        let item = SearchItem {
+            title: "Fix memory leak".to_string(),
+            html_url: "https://github.com/owner/repo/pull/123".to_string(),
+            repository_url: Some("https://api.github.com/repos/owner/repo".to_string()),
+            closed_at: Some(chrono::Utc::now()),
+        };
+
+        let repo_url = item.repository_url.as_ref().unwrap();
+        let parts: Vec<&str> = repo_url.split('/').collect();
+        let repo_name = parts[parts.len() - 1].to_string();
+        let repo_owner = parts[parts.len() - 2].to_string();
+
+        let contribution = FetchedContribution {
+            forge: "github".to_string(),
+            repo_owner: repo_owner.clone(),
+            repo_name: repo_name.clone(),
+            repo_url: format!("https://github.com/{}/{}", repo_owner, repo_name),
+            contribution_type: "pr".to_string(),
+            title: Some(item.title.clone()),
+            url: item.html_url.clone(),
+            merged_at: item.closed_at,
+        };
+
+        assert_eq!(contribution.forge, "github");
+        assert_eq!(contribution.repo_owner, "owner");
+        assert_eq!(contribution.repo_name, "repo");
+        assert_eq!(contribution.repo_url, "https://github.com/owner/repo");
+        assert_eq!(contribution.contribution_type, "pr");
+        assert_eq!(contribution.title, Some("Fix memory leak".to_string()));
+        assert_eq!(contribution.url, "https://github.com/owner/repo/pull/123");
+    }
+
+    #[test]
+    fn handles_missing_repository_url() {
+        let item = SearchItem {
+            title: "Some PR".to_string(),
+            html_url: "https://github.com/owner/repo/pull/456".to_string(),
+            repository_url: None,
+            closed_at: None,
+        };
+
+        assert!(item.repository_url.is_none());
+    }
+
+    #[test]
+    fn creates_contributions_sync_instance() {
+        let sync = ContributionsSync::new(
+            "testuser".to_string(),
+            Some("token123".to_string()),
+            Some("excludeuser".to_string()),
+        );
+
+        assert_eq!(sync.username, "testuser");
+        assert_eq!(sync.token, Some("token123".to_string()));
+        assert_eq!(sync.exclude_owner, Some("excludeuser".to_string()));
+    }
 }

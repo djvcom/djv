@@ -130,6 +130,7 @@ impl Config {
     /// - DJV_SYNC_GITHUB_TOKEN
     /// - DJV_SYNC_CRATES_IO_USER
     /// - DJV_SYNC_CONTRIBUTIONS_USER
+    #[allow(clippy::result_large_err)]
     pub fn load() -> Result<Self, figment::Error> {
         // Start with defaults
         let figment = Figment::new()

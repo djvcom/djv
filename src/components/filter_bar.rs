@@ -11,7 +11,9 @@ pub struct FilterOption {
 pub fn FilterBar(
     kind_filter: Option<String>,
     language_filter: Option<String>,
+    topic_filter: Option<String>,
     sort_filter: Option<String>,
+    #[prop(optional)] topics: Vec<String>,
     #[prop(into)] on_filter_change: Callback<(String, Option<String>)>,
 ) -> impl IntoView {
     let kinds = vec![
@@ -54,6 +56,18 @@ pub fn FilterBar(
             active: language_filter.as_deref() == Some("Nix"),
         },
     ];
+
+    let topic_options: Vec<FilterOption> = std::iter::once(FilterOption {
+        value: "".to_string(),
+        label: "any".to_string(),
+        active: topic_filter.is_none(),
+    })
+    .chain(topics.into_iter().map(|t| FilterOption {
+        value: t.clone(),
+        label: t.clone(),
+        active: topic_filter.as_deref() == Some(&t),
+    }))
+    .collect();
 
     let sorts = vec![
         FilterOption {
@@ -103,10 +117,17 @@ pub fn FilterBar(
         }
     };
 
+    let show_topics = !topic_options.is_empty() && topic_options.len() > 1;
+
     view! {
         <div class="filter-bar">
             {render_group("kind", kinds)}
             {render_group("language", languages)}
+            {if show_topics {
+                Some(render_group("topic", topic_options))
+            } else {
+                None
+            }}
             {render_group("sort", sorts)}
         </div>
     }

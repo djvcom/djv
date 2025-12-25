@@ -25,10 +25,9 @@ body {
 	max-width: 42rem;
 	margin: 0 auto;
 	padding: 4rem 1.5rem;
-	height: 100vh;
+	min-height: 100vh;
 	display: flex;
 	flex-direction: column;
-	overflow: hidden;
 }
 
 .hero {
@@ -196,4 +195,86 @@ body {
 		border-color: var(--color-accent);
 		color: var(--color-bg);
 	}
+}
+
+// Contributions section
+.contributions {
+	margin-top: 3rem;
+	padding-top: 2rem;
+	border-top: 1px solid var(--color-border);
+}
+
+.contributions h2 {
+	font-size: 1.25rem;
+	font-weight: 400;
+	text-transform: lowercase;
+	letter-spacing: 0.05em;
+	color: var(--color-text-muted);
+	margin-bottom: 1.5rem;
+}
+
+.contributions-list {
+	list-style: none;
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+}
+
+.contribution-item a {
+	display: flex;
+	gap: 0.75rem;
+	text-decoration: none;
+	color: inherit;
+	padding: 0.5rem 0;
+	transition: color 0.2s ease;
+
+	&:hover {
+		color: var(--color-accent);
+	}
+
+	&:hover .contribution-repo {
+		color: var(--color-accent);
+	}
+}
+
+.contribution-repo {
+	font-family: var(--font-sans);
+	font-size: 0.85rem;
+	color: var(--color-text-muted);
+	flex-shrink: 0;
+	min-width: 12rem;
+}
+
+.contribution-title {
+	font-size: 0.9rem;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.contributions-empty {
+	font-size: 0.9rem;
+	color: var(--color-text-muted);
+}
+
+// Projects placeholder (fallback when loading or no database)
+.projects-placeholder {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	min-height: 300px;
+}
+
+.placeholder-art {
+	width: 100%;
+	max-width: 400px;
+	height: auto;
+	margin-bottom: 1.5rem;
+}
+
+.placeholder-text {
+	font-size: 0.9rem;
+	color: var(--color-text-muted);
 }
