@@ -259,6 +259,22 @@
                   description = "Path to file containing GitHub token (optional, increases rate limits)";
                 };
               };
+
+              cratesIo = {
+                user = lib.mkOption {
+                  type = lib.types.nullOr lib.types.str;
+                  default = null;
+                  description = "crates.io username to sync crates from";
+                };
+              };
+
+              contributions = {
+                user = lib.mkOption {
+                  type = lib.types.nullOr lib.types.str;
+                  default = null;
+                  description = "GitHub username to track contributions from";
+                };
+              };
             };
           };
 
@@ -303,6 +319,12 @@
                 }
                 // lib.optionalAttrs (cfg.sync.github.user != null) {
                   DJV_GITHUB_USER = cfg.sync.github.user;
+                }
+                // lib.optionalAttrs (cfg.sync.cratesIo.user != null) {
+                  DJV_CRATES_IO_USER = cfg.sync.cratesIo.user;
+                }
+                // lib.optionalAttrs (cfg.sync.contributions.user != null) {
+                  DJV_CONTRIBUTIONS_USER = cfg.sync.contributions.user;
                 };
 
               serviceConfig = {
