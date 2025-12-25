@@ -28,12 +28,33 @@ async fn main() {
         .build()
         .expect("failed to initialise OpenTelemetry");
 
+    // Optionally initialise the database pool if DATABASE_URL is set
+    let db_pool = if std::env::var("DATABASE_URL").is_ok() {
+        match djv::db::init_pool().await {
+            Ok(pool) => {
+                tracing::info!("database pool initialised");
+                // Run migrations
+                if let Err(e) = djv::db::run_migrations(&pool).await {
+                    tracing::error!("failed to run migrations: {}", e);
+                }
+                Some(pool)
+            }
+            Err(e) => {
+                tracing::warn!("failed to initialise database pool: {}", e);
+                None
+            }
+        }
+    } else {
+        tracing::info!("DATABASE_URL not set, running without database");
+        None
+    };
+
     let conf = get_configuration(None).unwrap();
     let addr = conf.leptos_options.site_addr;
     let leptos_options = conf.leptos_options;
     let routes = generate_route_list(App);
 
-    let app = Router::new()
+    let mut app = Router::new()
         .leptos_routes(&leptos_options, routes, {
             let leptos_options = leptos_options.clone();
             move || shell(leptos_options.clone())
@@ -43,6 +64,11 @@ async fn main() {
         .layer(OtelAxumLayer::default())
         .layer(RecordProxyHeadersLayer)
         .with_state(leptos_options);
+
+    // Add database pool as extension if available
+    if let Some(pool) = db_pool {
+        app = app.layer(axum::Extension(pool));
+    }
 
     let addr = std::env::var("DJV_LISTEN")
         .ok()

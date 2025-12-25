@@ -1,6 +1,9 @@
 pub mod app;
 
 #[cfg(feature = "ssr")]
+pub mod db;
+
+#[cfg(feature = "ssr")]
 pub mod proxy_headers;
 
 #[cfg(feature = "hydrate")]

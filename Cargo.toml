@@ -20,6 +20,16 @@ tracing = { version = "0.1.44", optional = true }
 axum-tracing-opentelemetry = { version = "0.32.2", features = ["tracing_level_info"], optional = true }
 tower = { version = "0.5.2", features = ["timeout"], optional = true }
 
+# Database and sync dependencies
+sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "uuid", "chrono", "macros"], optional = true }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"], optional = true }
+async-trait = { version = "0.1", optional = true }
+
+# Serialisation and data types
+serde = { version = "1", features = ["derive"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+
 [features]
 hydrate = [
     "leptos/hydrate",
@@ -34,6 +44,9 @@ ssr = [
     "dep:axum-tracing-opentelemetry",
     "dep:tracing",
     "dep:tower",
+    "dep:sqlx",
+    "dep:reqwest",
+    "dep:async-trait",
     "leptos/ssr",
     "leptos_meta/ssr",
     "leptos_router/ssr",

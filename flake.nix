@@ -201,25 +201,77 @@
               default = "";
               description = "Git branch or tag name for telemetry";
             };
+
+            database = {
+              enable = lib.mkEnableOption "PostgreSQL database for projects";
+
+              host = lib.mkOption {
+                type = lib.types.str;
+                default = "/run/postgresql";
+                description = "PostgreSQL host or socket path";
+              };
+
+              port = lib.mkOption {
+                type = lib.types.port;
+                default = 5432;
+                description = "PostgreSQL port";
+              };
+
+              name = lib.mkOption {
+                type = lib.types.str;
+                default = "djv";
+                description = "Database name";
+              };
+
+              user = lib.mkOption {
+                type = lib.types.str;
+                default = "djv";
+                description = "Database user";
+              };
+
+              passwordFile = lib.mkOption {
+                type = lib.types.nullOr lib.types.path;
+                default = null;
+                description = "Path to file containing database password (optional for socket auth)";
+              };
+            };
           };
 
           config = lib.mkIf cfg.enable {
             systemd.services.djv = {
               description = "djv.sh homepage";
               wantedBy = [ "multi-user.target" ];
-              after = [ "network.target" ];
+              after = [ "network.target" ] ++ lib.optionals cfg.database.enable [ "postgresql.service" ];
+              requires = lib.optionals cfg.database.enable [ "postgresql.service" ];
 
-              environment = {
-                DJV_LISTEN = cfg.listenAddress;
-                OTEL_EXPORTER_OTLP_ENDPOINT = cfg.opentelemetryEndpoint;
-                OTEL_RESOURCE_ATTRIBUTES = "deployment.environment.name=${cfg.environment}";
-              }
-              // lib.optionalAttrs (cfg.vcsRevision != "") {
-                VCS_REF_HEAD_REVISION = cfg.vcsRevision;
-              }
-              // lib.optionalAttrs (cfg.vcsRefName != "") {
-                VCS_REF_HEAD_NAME = cfg.vcsRefName;
-              };
+              environment =
+                let
+                  # Build DATABASE_URL based on config
+                  # For socket auth: postgres://user@/dbname?host=/run/postgresql
+                  # For TCP: postgres://user:password@host:port/dbname
+                  dbUrl =
+                    if cfg.database.enable then
+                      if lib.hasPrefix "/" cfg.database.host then
+                        "postgres://${cfg.database.user}@/${cfg.database.name}?host=${cfg.database.host}"
+                      else
+                        "postgres://${cfg.database.user}@${cfg.database.host}:${toString cfg.database.port}/${cfg.database.name}"
+                    else
+                      null;
+                in
+                {
+                  DJV_LISTEN = cfg.listenAddress;
+                  OTEL_EXPORTER_OTLP_ENDPOINT = cfg.opentelemetryEndpoint;
+                  OTEL_RESOURCE_ATTRIBUTES = "deployment.environment.name=${cfg.environment}";
+                }
+                // lib.optionalAttrs (cfg.vcsRevision != "") {
+                  VCS_REF_HEAD_REVISION = cfg.vcsRevision;
+                }
+                // lib.optionalAttrs (cfg.vcsRefName != "") {
+                  VCS_REF_HEAD_NAME = cfg.vcsRefName;
+                }
+                // lib.optionalAttrs (dbUrl != null) {
+                  DATABASE_URL = dbUrl;
+                };
 
               serviceConfig = {
                 Type = "simple";
