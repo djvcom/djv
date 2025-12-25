@@ -255,7 +255,7 @@ pub async fn get_projects(
         SELECT id, kind, name, description, url, language, topics, popularity, synced_at
         FROM projects
         WHERE ($1::TEXT IS NULL OR kind = $1)
-          AND ($2::TEXT IS NULL OR language = $2)
+          AND ($2::TEXT IS NULL OR LOWER(language) = LOWER($2))
           AND ($3::TEXT IS NULL OR $3 = ANY(topics))
         ORDER BY {}
         LIMIT 50

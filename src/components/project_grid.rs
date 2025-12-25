@@ -2,7 +2,7 @@ use leptos::prelude::*;
 
 use super::ProjectCard;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct ProjectData {
     pub id: String,
     pub name: String,

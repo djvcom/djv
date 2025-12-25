@@ -9,9 +9,9 @@ pub struct FilterOption {
 
 #[component]
 pub fn FilterBar(
-    #[prop(optional)] kind_filter: Option<String>,
-    #[prop(optional)] language_filter: Option<String>,
-    #[prop(optional)] sort_filter: Option<String>,
+    kind_filter: Option<String>,
+    language_filter: Option<String>,
+    sort_filter: Option<String>,
     #[prop(into)] on_filter_change: Callback<(String, Option<String>)>,
 ) -> impl IntoView {
     let kinds = vec![
