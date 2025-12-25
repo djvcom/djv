@@ -564,6 +564,7 @@ dependencies = [
  "axum-tracing-opentelemetry",
  "chrono",
  "console_error_panic_hook",
+ "figment",
  "leptos",
  "leptos_axum",
  "leptos_meta",

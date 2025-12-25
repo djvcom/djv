@@ -31,6 +31,7 @@ uuid = { version = "1", features = ["v4", "serde", "js"] }
 chrono = { version = "0.4", features = ["serde"] }
 thiserror = { version = "2.0.17", optional = true }
 urlencoding = { version = "2.1.3", optional = true }
+figment = { version = "0.10.19", features = ["env"], optional = true }
 
 [features]
 hydrate = [
@@ -51,6 +52,7 @@ ssr = [
     "dep:async-trait",
     "dep:thiserror",
     "dep:urlencoding",
+    "dep:figment",
     "leptos/ssr",
     "leptos_meta/ssr",
     "leptos_router/ssr",
