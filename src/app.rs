@@ -12,6 +12,7 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
             <head>
                 <meta charset="utf-8"/>
                 <meta name="viewport" content="width=device-width, initial-scale=1"/>
+                <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
                 <AutoReload options=options.clone() />
                 <HydrationScripts options/>
                 <MetaTags/>
@@ -52,7 +53,7 @@ fn HomePage() -> impl IntoView {
         <div class="container">
             <header class="hero">
                 <h1>"Daniel Verrall"</h1>
-                <p class="tagline">"building with rust • watching it run"</p>
+                <p class="tagline">"rust • opentelemetry • nix"</p>
             </header>
 
             <section class="projects">
