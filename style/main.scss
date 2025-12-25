@@ -95,14 +95,105 @@ body {
 	}
 }
 
+.project-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	gap: 0.5rem;
+	margin-bottom: 0.25rem;
+}
+
 .project-card h3 {
 	font-family: var(--font-sans);
 	font-size: 1rem;
 	font-weight: 500;
-	margin-bottom: 0.25rem;
 }
 
-.project-card p {
+.project-badge {
+	font-family: var(--font-sans);
+	font-size: 0.7rem;
+	text-transform: lowercase;
+	color: var(--color-text-muted);
+	background: var(--color-border);
+	padding: 0.15rem 0.4rem;
+	border-radius: 2px;
+	flex-shrink: 0;
+}
+
+.project-description {
 	font-size: 0.9rem;
 	color: var(--color-text-muted);
+	overflow: hidden;
+	display: -webkit-box;
+	-webkit-line-clamp: 3;
+	-webkit-box-orient: vertical;
+}
+
+.project-empty {
+	grid-column: 1 / -1;
+	grid-row: 1 / -1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	color: var(--color-text-muted);
+}
+
+.project-empty-art {
+	width: 120px;
+	height: 120px;
+	margin-bottom: 1rem;
+	opacity: 0.6;
+}
+
+.project-empty-text {
+	font-size: 0.9rem;
+}
+
+// Filter bar
+.filter-bar {
+	display: flex;
+	gap: 1.5rem;
+	margin-bottom: 1rem;
+	flex-wrap: wrap;
+}
+
+.filter-group {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.filter-label {
+	font-size: 0.8rem;
+	color: var(--color-text-muted);
+	text-transform: lowercase;
+}
+
+.filter-options {
+	display: flex;
+	gap: 0.25rem;
+}
+
+.filter-btn {
+	font-family: var(--font-sans);
+	font-size: 0.75rem;
+	text-transform: lowercase;
+	padding: 0.25rem 0.5rem;
+	border: 1px solid var(--color-border);
+	background: transparent;
+	color: var(--color-text-muted);
+	cursor: pointer;
+	transition: all 0.2s ease;
+
+	&:hover {
+		border-color: var(--color-accent);
+		color: var(--color-text);
+	}
+
+	&.active {
+		background: var(--color-accent);
+		border-color: var(--color-accent);
+		color: var(--color-bg);
+	}
 }

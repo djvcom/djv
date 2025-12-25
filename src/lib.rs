@@ -1,4 +1,5 @@
 pub mod app;
+pub mod components;
 
 #[cfg(feature = "ssr")]
 pub mod db;
