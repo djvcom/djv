@@ -273,8 +273,9 @@
               contributions = {
                 user = lib.mkOption {
                   type = lib.types.nullOr lib.types.str;
-                  default = null;
-                  description = "GitHub username to track contributions from";
+                  default = cfg.sync.github.user;
+                  defaultText = lib.literalExpression "cfg.sync.github.user";
+                  description = "GitHub username to track contributions from (defaults to github.user)";
                 };
               };
             };
