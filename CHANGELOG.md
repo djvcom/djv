@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1](https://github.com/djvcom/djv/compare/v0.5.0...v0.5.1) - 2025-12-26
+
+### Fixed
+
+- *(ci)* quote if expression to fix YAML syntax error
+
+### Other
+
+- *(ci)* cache Playwright browsers and fix update-stable trigger ([#18](https://github.com/djvcom/djv/pull/18))
+
 ## [0.5.0](https://github.com/djvcom/djv/compare/v0.4.1...v0.5.0) - 2025-12-26
 
 ### Added
