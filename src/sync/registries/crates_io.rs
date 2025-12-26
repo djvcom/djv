@@ -11,7 +11,7 @@ pub struct CratesIoRegistry {
 }
 
 #[derive(Debug, Clone)]
-pub struct FetchedCrate {
+pub struct CrateSummary {
     pub name: String,
     pub description: Option<String>,
     pub repository_url: Option<String>,
@@ -54,7 +54,7 @@ impl CratesIoRegistry {
     }
 
     #[tracing::instrument(skip(self), fields(username = %self.username))]
-    pub async fn fetch_crates(&self) -> Result<Vec<FetchedCrate>, SyncError> {
+    pub async fn fetch_crates(&self) -> Result<Vec<CrateSummary>, SyncError> {
         let user_id = self.get_user_id().await?;
 
         let mut all_crates = Vec::new();
@@ -79,7 +79,7 @@ impl CratesIoRegistry {
             let count = response.crates.len();
             tracing::debug!(page, count, "fetched page");
 
-            all_crates.extend(response.crates.into_iter().map(|c| FetchedCrate {
+            all_crates.extend(response.crates.into_iter().map(|c| CrateSummary {
                 name: c.name.clone(),
                 description: c.description,
                 repository_url: c.repository,
@@ -188,7 +188,7 @@ mod tests {
             newest_version: Some("2.0.0".to_string()),
         };
 
-        let fetched = FetchedCrate {
+        let fetched = CrateSummary {
             name: crate_info.name.clone(),
             description: crate_info.description,
             repository_url: crate_info.repository,
