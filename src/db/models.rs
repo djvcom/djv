@@ -107,6 +107,9 @@ pub struct ProjectView {
     pub language: Option<String>,
     pub topics: Vec<String>,
     pub popularity: i32,
+    pub version: Option<String>,
+    pub commit_count: Option<i32>,
+    pub updated_at: Option<DateTime<Utc>>,
     pub synced_at: DateTime<Utc>,
 }
 

@@ -21,7 +21,7 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
                 <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
                 <link rel="preconnect" href="https://fonts.googleapis.com"/>
                 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-                <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet"/>
+                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400&family=Libre+Baskerville:wght@400;700&display=swap" rel="stylesheet"/>
                 <AutoReload options=options.clone() />
                 <HydrationScripts options/>
                 <MetaTags/>
@@ -100,6 +100,10 @@ pub async fn fetch_projects(filters: ProjectFilters) -> Result<Vec<ProjectData>,
             url: p.url,
             kind: p.kind.to_string(),
             language: p.language,
+            popularity: p.popularity,
+            version: p.version,
+            commit_count: p.commit_count,
+            updated_at: p.updated_at.map(|dt| dt.format("%Y-%m-%d").to_string()),
         })
         .collect())
 }
@@ -238,6 +242,9 @@ fn HomePage() -> impl IntoView {
                         })
                     }}
                 </Suspense>
+                <div class="archive-link">
+                    <a href="/?kind=all">"View all projects"</a>
+                </div>
             </section>
 
             <section class="contributions">

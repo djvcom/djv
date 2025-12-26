@@ -10,6 +10,10 @@ pub struct ProjectData {
     pub url: String,
     pub kind: String,
     pub language: Option<String>,
+    pub popularity: i32,
+    pub version: Option<String>,
+    pub commit_count: Option<i32>,
+    pub updated_at: Option<String>,
 }
 
 #[component]
@@ -26,6 +30,10 @@ pub fn ProjectGrid(projects: Vec<ProjectData>) -> impl IntoView {
                             url=p.url
                             kind=Some(p.kind)
                             language=p.language
+                            popularity=p.popularity
+                            version=p.version
+                            commit_count=p.commit_count
+                            updated_at=p.updated_at
                         />
                     }
                 })

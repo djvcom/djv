@@ -1,0 +1,124 @@
+// _design-system.scss
+// Gallery aesthetic design system - inspired by Atelier Ellis
+// Reusable across projects
+
+:root {
+	// ===== TYPOGRAPHY =====
+
+	// Font families
+	--font-serif: 'Libre Baskerville', Georgia, ui-serif, serif;
+	--font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+	--font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+	// Type scale (fluid)
+	--text-display: clamp(2.5rem, 5vw, 3.5rem);       // 40-56px - Hero/Logo
+	--text-h1: clamp(2rem, 4vw, 2.625rem);            // 32-42px - Page titles
+	--text-h2: clamp(1.5rem, 3vw, 2rem);              // 24-32px - Sections
+	--text-h3: clamp(1.25rem, 2.5vw, 1.5rem);         // 20-24px - Subsections
+	--text-body: clamp(1rem, 1.5vw, 1.125rem);        // 16-18px - Body
+	--text-small: clamp(0.875rem, 1.25vw, 0.9375rem); // 14-15px - Captions
+	--text-xs: clamp(0.75rem, 1vw, 0.8125rem);        // 12-13px - Labels
+
+	// Font weights
+	--weight-light: 300;
+	--weight-regular: 400;
+	--weight-medium: 500;
+	--weight-semibold: 600;
+
+	// Line heights
+	--leading-tight: 1.2;
+	--leading-snug: 1.35;
+	--leading-normal: 1.5;
+	--leading-relaxed: 1.65;
+
+	// Letter spacing
+	--tracking-tight: -0.025em;
+	--tracking-normal: 0;
+	--tracking-wide: 0.05em;
+	--tracking-wider: 0.1em;
+
+	// ===== COLOURS (OKLCH) =====
+
+	// Canvas & surfaces
+	--colour-canvas: oklch(96% 0.015 75);
+	--colour-surface: oklch(92% 0.012 75);
+	--colour-surface-raised: oklch(97.5% 0.01 75);
+
+	// Text hierarchy
+	--colour-text-primary: oklch(25% 0.012 45);
+	--colour-text-secondary: oklch(45% 0.01 55);
+	--colour-text-tertiary: oklch(60% 0.008 65);
+
+	// Borders & UI
+	--colour-border-subtle: oklch(82% 0.01 70);
+	--colour-border: oklch(75% 0.012 70);
+	--colour-border-strong: oklch(55% 0.015 60);
+
+	// Dark header (optional)
+	--colour-header-bg: oklch(22% 0.01 40);
+	--colour-header-text: oklch(92% 0.008 75);
+
+	// Accents
+	--colour-accent: oklch(35% 0.025 50);
+	--colour-accent-hover: oklch(28% 0.03 48);
+	--colour-accent-sage: oklch(65% 0.035 140);
+
+	// Focus
+	--colour-focus: oklch(40% 0.035 140);
+
+	// ===== SPACING =====
+
+	--space-0: 0;
+	--space-1: 0.25rem;   // 4px
+	--space-2: 0.5rem;    // 8px
+	--space-3: 0.75rem;   // 12px
+	--space-4: 1rem;      // 16px
+	--space-6: 1.5rem;    // 24px
+	--space-8: 2rem;      // 32px
+	--space-12: 3rem;     // 48px
+	--space-16: 4rem;     // 64px
+	--space-24: 6rem;     // 96px
+	--space-32: 8rem;     // 128px
+	--space-40: 10rem;    // 160px
+
+	// Fluid gutters
+	--gutter-desktop: 4vw;
+	--gutter-mobile: 6vw;
+
+	// Container
+	--container-max: 45rem;
+	--container-wide: 75rem;
+
+	// ===== MOTION =====
+
+	--duration-instant: 100ms;
+	--duration-fast: 200ms;
+	--duration-medium: 250ms;
+	--duration-comfortable: 400ms;
+	--duration-deliberate: 500ms;
+	--duration-slow: 650ms;
+
+	--ease-out: cubic-bezier(0.33, 1, 0.68, 1);
+	--ease-in: cubic-bezier(0.32, 0, 0.67, 0);
+	--ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+// ===== ACCESSIBILITY =====
+
+// Focus states
+:focus-visible {
+	outline: 2px solid var(--colour-focus);
+	outline-offset: 4px;
+}
+
+// Reduced motion
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+}

@@ -255,13 +255,13 @@ pub async fn get_projects(
 
     let query = format!(
         r#"
-        SELECT id, kind, name, description, url, language, topics, popularity, synced_at
+        SELECT id, kind, name, description, url, language, topics, popularity, version, commit_count, updated_at, synced_at
         FROM projects
         WHERE ($1::TEXT IS NULL OR kind = $1)
           AND ($2::TEXT IS NULL OR LOWER(language) = LOWER($2))
           AND ($3::TEXT IS NULL OR $3 = ANY(topics))
         ORDER BY {}
-        LIMIT 50
+        LIMIT 8
         "#,
         order_by
     );
@@ -288,6 +288,9 @@ pub async fn get_projects(
                     .get::<Option<Vec<String>>, _>("topics")
                     .unwrap_or_default(),
                 popularity: row.get::<Option<i32>, _>("popularity").unwrap_or(0),
+                version: row.get("version"),
+                commit_count: row.get("commit_count"),
+                updated_at: row.get("updated_at"),
                 synced_at: row.get("synced_at"),
             }
         })
