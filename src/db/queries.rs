@@ -60,6 +60,21 @@ pub async fn get_repository_by_url(pool: &PgPool, url: &str) -> Result<Option<Uu
     Ok(id)
 }
 
+pub async fn get_repositories_by_urls(
+    pool: &PgPool,
+    urls: &[String],
+) -> Result<std::collections::HashMap<String, Uuid>, sqlx::Error> {
+    if urls.is_empty() {
+        return Ok(std::collections::HashMap::new());
+    }
+
+    let rows = sqlx::query!("SELECT url, id FROM repositories WHERE url = ANY($1)", urls)
+        .fetch_all(pool)
+        .await?;
+
+    Ok(rows.into_iter().map(|r| (r.url, r.id)).collect())
+}
+
 // ============================================================================
 // Crate queries
 // ============================================================================
