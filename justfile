@@ -11,7 +11,10 @@ lint:
     deadnix .
 
 test:
-    cargo test
+    SQLX_OFFLINE=true cargo test --features ssr
+
+test-watch:
+    SQLX_OFFLINE=true cargo watch -x 'test --features ssr'
 
 check: fmt lint test
     @echo "All checks passed"
