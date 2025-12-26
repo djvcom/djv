@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0](https://github.com/djvcom/djv/compare/v0.4.1...v0.5.0) - 2025-12-26
+
+### Added
+
+- add comprehensive test suite, UI improvements, and crates.io sync ([#16](https://github.com/djvcom/djv/pull/16))
+
 ## [0.4.1](https://github.com/djvcom/djv/compare/v0.4.0...v0.4.1) - 2025-12-24
 
 ### Other
