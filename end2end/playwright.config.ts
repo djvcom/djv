@@ -60,7 +60,7 @@ export default defineConfig({
   webServer: {
     command: "cargo leptos watch",
     url: "http://localhost:3000",
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: true,
     timeout: 120_000, // 2 minutes for cargo build
     cwd: "..",
     env: {
