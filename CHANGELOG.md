@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.2](https://github.com/djvcom/djv/compare/v0.5.1...v0.5.2) - 2025-12-26
+
+### Other
+
+- architecture improvements, database performance, and dark mode ([#22](https://github.com/djvcom/djv/pull/22))
+
 ## [0.5.1](https://github.com/djvcom/djv/compare/v0.5.0...v0.5.1) - 2025-12-26
 
 ### Fixed
