@@ -109,10 +109,65 @@ jobs:
           use-flakehub: false
       - run: nix build
 
+  e2e-test:
+    name: E2E tests
+    runs-on: ubuntu-latest
+    needs: [rust-test]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: djv_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgres://postgres:test@localhost/djv_dev
+    steps:
+      - uses: actions/checkout@v6
+      - uses: DeterminateSystems/nix-installer-action@v21
+      - uses: DeterminateSystems/magic-nix-cache-action@v13
+        with:
+          use-flakehub: false
+
+      - name: Build application
+        run: nix develop --command cargo leptos build --release
+
+      - name: Start server
+        run: |
+          nix develop --command ./target/release/djv &
+          sleep 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Playwright
+        run: |
+          cd end2end
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        run: cd end2end && npx playwright test --project=chromium
+        env:
+          CI: true
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: end2end/playwright-report/
+
   update-stable:
     name: Update stable tag
     runs-on: ubuntu-latest
-    needs: [rust-fmt, rust-clippy, rust-test, sqlx-check, nix-fmt, nix-lint, nix-build]
+    needs: [rust-fmt, rust-clippy, rust-test, sqlx-check, nix-fmt, nix-lint, nix-build, e2e-test]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: write
