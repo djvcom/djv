@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO crates (name, description, repository_id, crates_io_url, documentation_url, downloads, version, keywords, categories, synced_at)\n        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now())\n        ON CONFLICT (name) DO UPDATE SET\n            description = EXCLUDED.description,\n            repository_id = EXCLUDED.repository_id,\n            crates_io_url = EXCLUDED.crates_io_url,\n            documentation_url = EXCLUDED.documentation_url,\n            downloads = EXCLUDED.downloads,\n            version = EXCLUDED.version,\n            keywords = EXCLUDED.keywords,\n            categories = EXCLUDED.categories,\n            synced_at = now()\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Uuid",
+        "Text",
+        "Text",
+        "Int4",
+        "Text",
+        "TextArray",
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "f1cf103b4f36540c489ddf10505fecdf535b4c2e517482771f1f925793421116"
+}

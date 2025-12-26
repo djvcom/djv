@@ -55,6 +55,7 @@
               binaryen
               dart-sass
               wasm-bindgen-cli
+              sqlx-cli
               just
               rust-analyzer
 
@@ -90,7 +91,9 @@
             filter =
               path: type:
               (pkgs.lib.hasSuffix ".scss" path)
-              || (pkgs.lib.hasSuffix ".ico" path)
+              || (pkgs.lib.hasSuffix ".svg" path)
+              || (pkgs.lib.hasSuffix ".sql" path)
+              || (pkgs.lib.hasInfix ".sqlx" path)
               || (craneLib.filterCargoSources path type);
           };
 
@@ -201,29 +204,133 @@
               default = "";
               description = "Git branch or tag name for telemetry";
             };
+
+            database = {
+              enable = lib.mkEnableOption "PostgreSQL database for projects";
+
+              host = lib.mkOption {
+                type = lib.types.str;
+                default = "/run/postgresql";
+                description = "PostgreSQL host or socket path";
+              };
+
+              port = lib.mkOption {
+                type = lib.types.port;
+                default = 5432;
+                description = "PostgreSQL port";
+              };
+
+              name = lib.mkOption {
+                type = lib.types.str;
+                default = "djv";
+                description = "Database name";
+              };
+
+              user = lib.mkOption {
+                type = lib.types.str;
+                default = "djv";
+                description = "Database user";
+              };
+
+              passwordFile = lib.mkOption {
+                type = lib.types.nullOr lib.types.path;
+                default = null;
+                description = "Path to file containing database password (optional for socket auth)";
+              };
+            };
+
+            sync = {
+              enable = lib.mkEnableOption "background sync from code forges";
+
+              intervalSeconds = lib.mkOption {
+                type = lib.types.int;
+                default = 3600;
+                description = "Sync interval in seconds";
+              };
+
+              github = {
+                user = lib.mkOption {
+                  type = lib.types.nullOr lib.types.str;
+                  default = null;
+                  description = "GitHub username to sync repositories from";
+                };
+
+                tokenFile = lib.mkOption {
+                  type = lib.types.nullOr lib.types.path;
+                  default = null;
+                  description = "Path to file containing GitHub token (optional, increases rate limits)";
+                };
+              };
+
+              cratesIo = {
+                user = lib.mkOption {
+                  type = lib.types.nullOr lib.types.str;
+                  default = null;
+                  description = "crates.io username to sync crates from";
+                };
+              };
+
+              contributions = {
+                user = lib.mkOption {
+                  type = lib.types.nullOr lib.types.str;
+                  default = null;
+                  description = "GitHub username to track contributions from";
+                };
+              };
+            };
           };
 
           config = lib.mkIf cfg.enable {
             systemd.services.djv = {
               description = "djv.sh homepage";
               wantedBy = [ "multi-user.target" ];
-              after = [ "network.target" ];
+              after = [ "network.target" ] ++ lib.optionals cfg.database.enable [ "postgresql.service" ];
+              requires = lib.optionals cfg.database.enable [ "postgresql.service" ];
 
-              environment = {
-                DJV_LISTEN = cfg.listenAddress;
-                OTEL_EXPORTER_OTLP_ENDPOINT = cfg.opentelemetryEndpoint;
-                OTEL_RESOURCE_ATTRIBUTES = "deployment.environment.name=${cfg.environment}";
-              }
-              // lib.optionalAttrs (cfg.vcsRevision != "") {
-                VCS_REF_HEAD_REVISION = cfg.vcsRevision;
-              }
-              // lib.optionalAttrs (cfg.vcsRefName != "") {
-                VCS_REF_HEAD_NAME = cfg.vcsRefName;
-              };
+              environment =
+                let
+                  # Build DATABASE_URL based on config
+                  # For socket auth: postgres://user@/dbname?host=/run/postgresql
+                  # For TCP: postgres://user:password@host:port/dbname
+                  dbUrl =
+                    if cfg.database.enable then
+                      if lib.hasPrefix "/" cfg.database.host then
+                        "postgres://${cfg.database.user}@/${cfg.database.name}?host=${cfg.database.host}"
+                      else
+                        "postgres://${cfg.database.user}@${cfg.database.host}:${toString cfg.database.port}/${cfg.database.name}"
+                    else
+                      null;
+                in
+                {
+                  DJV_LISTEN = cfg.listenAddress;
+                  OTEL_EXPORTER_OTLP_ENDPOINT = cfg.opentelemetryEndpoint;
+                  OTEL_RESOURCE_ATTRIBUTES = "deployment.environment.name=${cfg.environment}";
+                }
+                // lib.optionalAttrs (cfg.vcsRevision != "") {
+                  VCS_REF_HEAD_REVISION = cfg.vcsRevision;
+                }
+                // lib.optionalAttrs (cfg.vcsRefName != "") {
+                  VCS_REF_HEAD_NAME = cfg.vcsRefName;
+                }
+                // lib.optionalAttrs (dbUrl != null) {
+                  DATABASE_URL = dbUrl;
+                }
+                // lib.optionalAttrs cfg.sync.enable {
+                  DJV_SYNC_ENABLED = "true";
+                  DJV_SYNC_INTERVAL = toString cfg.sync.intervalSeconds;
+                }
+                // lib.optionalAttrs (cfg.sync.github.user != null) {
+                  DJV_GITHUB_USER = cfg.sync.github.user;
+                }
+                // lib.optionalAttrs (cfg.sync.cratesIo.user != null) {
+                  DJV_CRATES_IO_USER = cfg.sync.cratesIo.user;
+                }
+                // lib.optionalAttrs (cfg.sync.contributions.user != null) {
+                  DJV_CONTRIBUTIONS_USER = cfg.sync.contributions.user;
+                };
 
               serviceConfig = {
                 Type = "simple";
-                ExecStart = "${cfg.package}/bin/djv";
                 Restart = "always";
                 RestartSec = 5;
 
@@ -233,7 +340,18 @@
                 ProtectSystem = "strict";
                 ProtectHome = true;
                 PrivateTmp = true;
+              }
+              // lib.optionalAttrs (cfg.sync.github.tokenFile == null) {
+                ExecStart = "${cfg.package}/bin/djv";
+              }
+              // lib.optionalAttrs (cfg.sync.github.tokenFile != null) {
+                LoadCredential = "github-token:${cfg.sync.github.tokenFile}";
               };
+
+              script = lib.mkIf (cfg.sync.github.tokenFile != null) ''
+                export DJV_GITHUB_TOKEN="$(cat $CREDENTIALS_DIRECTORY/github-token)"
+                exec ${cfg.package}/bin/djv
+              '';
             };
           };
         };

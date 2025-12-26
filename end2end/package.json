@@ -1,15 +1,16 @@
 {
   "name": "end2end",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {},
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "description": "End-to-end tests for djv.sh",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed",
+    "report": "playwright show-report"
+  },
   "devDependencies": {
-    "@playwright/test": "^1.44.1",
-    "@types/node": "^20.12.12",
-    "typescript": "^5.4.5"
+    "@playwright/test": "^1.49.1",
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
   }
 }

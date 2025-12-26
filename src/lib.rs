@@ -1,7 +1,17 @@
 pub mod app;
+pub mod components;
+
+#[cfg(feature = "ssr")]
+pub mod config;
+
+#[cfg(feature = "ssr")]
+pub mod db;
 
 #[cfg(feature = "ssr")]
 pub mod proxy_headers;
+
+#[cfg(feature = "ssr")]
+pub mod sync;
 
 #[cfg(feature = "hydrate")]
 #[wasm_bindgen::prelude::wasm_bindgen]
