@@ -7,6 +7,7 @@ async fn main() -> anyhow::Result<()> {
     use djv::app::*;
     use djv::config::Config;
     use djv::proxy_headers::RecordProxyHeadersLayer;
+    use djv::state::AppState;
     use leptos::prelude::*;
     use leptos_axum::{generate_route_list, LeptosRoutes};
     use opentelemetry_configuration::{
@@ -121,10 +122,9 @@ async fn main() -> anyhow::Result<()> {
         .layer(RecordProxyHeadersLayer)
         .with_state(leptos_options);
 
-    // Add database pool as extension if available
-    if let Some(pool) = db_pool {
-        app = app.layer(axum::Extension(pool));
-    }
+    // Add app state as extension
+    let app_state = AppState { pool: db_pool };
+    app = app.layer(axum::Extension(app_state));
 
     // Use configured listen address
     let addr: std::net::SocketAddr = config

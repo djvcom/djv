@@ -68,11 +68,15 @@ pub struct ProjectFilters {
 )))]
 pub async fn fetch_projects(filters: ProjectFilters) -> Result<Vec<ProjectData>, ServerFnError> {
     use crate::db::{get_projects, ProjectFilters as DbFilters, ProjectKind, SortOrder};
+    use crate::state::AppState;
     use axum::Extension;
     use leptos_axum::extract;
-    use sqlx::PgPool;
 
-    let Extension(pool): Extension<PgPool> = extract().await?;
+    let Extension(app_state): Extension<AppState> = extract().await?;
+    let pool = app_state
+        .pool
+        .as_ref()
+        .ok_or_else(|| ServerFnError::new("Database not available"))?;
 
     let db_filters = DbFilters {
         kind: filters
@@ -111,11 +115,15 @@ pub async fn fetch_projects(filters: ProjectFilters) -> Result<Vec<ProjectData>,
 #[server(FetchTopics)]
 pub async fn fetch_topics() -> Result<Vec<String>, ServerFnError> {
     use crate::db::get_distinct_topics;
+    use crate::state::AppState;
     use axum::Extension;
     use leptos_axum::extract;
-    use sqlx::PgPool;
 
-    let Extension(pool): Extension<PgPool> = extract().await?;
+    let Extension(app_state): Extension<AppState> = extract().await?;
+    let pool = app_state
+        .pool
+        .as_ref()
+        .ok_or_else(|| ServerFnError::new("Database not available"))?;
 
     let topics = get_distinct_topics(&pool)
         .await
@@ -127,11 +135,15 @@ pub async fn fetch_topics() -> Result<Vec<String>, ServerFnError> {
 #[server(FetchContributions)]
 pub async fn fetch_contributions() -> Result<Vec<ContributionData>, ServerFnError> {
     use crate::db::get_contributions;
+    use crate::state::AppState;
     use axum::Extension;
     use leptos_axum::extract;
-    use sqlx::PgPool;
 
-    let Extension(pool): Extension<PgPool> = extract().await?;
+    let Extension(app_state): Extension<AppState> = extract().await?;
+    let pool = app_state
+        .pool
+        .as_ref()
+        .ok_or_else(|| ServerFnError::new("Database not available"))?;
 
     let contributions = get_contributions(&pool, 10, 2)
         .await
