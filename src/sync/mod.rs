@@ -9,7 +9,7 @@ use std::time::Duration;
 use tokio::time::interval;
 
 pub use contributions::{ContributionsSync, FetchedContribution};
-pub use registries::{CratesIoRegistry, CrateSummary};
+pub use registries::{CrateSummary, CratesIoRegistry};
 
 /// Repository data fetched from a forge (before database insertion)
 #[derive(Debug, Clone)]
