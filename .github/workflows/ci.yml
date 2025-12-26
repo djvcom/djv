@@ -137,6 +137,8 @@ jobs:
 
       - name: Build application
         run: nix develop --command cargo leptos build --release
+        env:
+          SQLX_OFFLINE: true
 
       - name: Start server
         run: |
