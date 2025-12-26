@@ -1,14 +1,15 @@
 use leptos::prelude::*;
-use leptos_meta::{provide_meta_context, MetaTags, Stylesheet, Title};
+use leptos_meta::{provide_meta_context, Html, MetaTags, Stylesheet, Title};
 use leptos_router::{
     components::{Route, Router, Routes},
     hooks::use_query_map,
     StaticSegment,
 };
+use leptos_use::{use_color_mode, ColorMode, UseColorModeReturn};
 
 use crate::components::{
     ContributionData, ContributionsEmpty, ContributionsList, FilterBar, ProjectData, ProjectGrid,
-    ProjectGridEmpty, ProjectsPlaceholder,
+    ProjectGridEmpty, ProjectsPlaceholder, ThemeToggle,
 };
 
 pub fn shell(options: LeptosOptions) -> impl IntoView {
@@ -34,11 +35,22 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
     }
 }
 
+#[derive(Clone)]
+pub struct ThemeContext {
+    pub mode: Signal<ColorMode>,
+    pub set_mode: WriteSignal<ColorMode>,
+}
+
 #[component]
 pub fn App() -> impl IntoView {
     provide_meta_context();
 
+    let UseColorModeReturn { mode, set_mode, .. } = use_color_mode();
+
+    provide_context(ThemeContext { mode, set_mode });
+
     view! {
+        <Html {..} class=move || mode.get().to_string()/>
         <Stylesheet id="leptos" href="/pkg/djv.css"/>
         <Title text="Daniel Verrall"/>
 
@@ -260,8 +272,11 @@ fn HomePage() -> impl IntoView {
     view! {
         <div class="container">
             <header class="hero">
-                <h1>"Daniel Verrall"</h1>
-                <p class="tagline">"rust • opentelemetry • nix"</p>
+                <div class="hero__title">
+                    <h1>"Daniel Verrall"</h1>
+                    <p class="tagline">"rust • opentelemetry • nix"</p>
+                </div>
+                <ThemeToggle />
             </header>
 
             <section class="projects">
