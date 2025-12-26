@@ -134,13 +134,19 @@ async fn sync_crates(pool: &PgPool, crates_io: &CratesIoRegistry) -> Result<(), 
     let crates = crates_io.fetch_crates().await?;
     let count = crates.len();
 
+    // Batch lookup all repository URLs at once to avoid N+1 queries
+    let repo_urls: Vec<String> = crates
+        .iter()
+        .filter_map(|k| k.repository_url.clone())
+        .collect();
+
+    let repo_map = crate::db::get_repositories_by_urls(pool, &repo_urls).await?;
+
     for krate in crates {
-        // Try to find matching repository by URL
-        let repository_id = if let Some(ref repo_url) = krate.repository_url {
-            crate::db::get_repository_by_url(pool, repo_url).await?
-        } else {
-            None
-        };
+        let repository_id = krate
+            .repository_url
+            .as_ref()
+            .and_then(|url| repo_map.get(url).copied());
 
         crate::db::upsert_crate(
             pool,

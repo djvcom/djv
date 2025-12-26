@@ -18,6 +18,7 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
             <head>
                 <meta charset="utf-8"/>
                 <meta name="viewport" content="width=device-width, initial-scale=1"/>
+                <meta name="color-scheme" content="light dark"/>
                 <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
                 <link rel="preconnect" href="https://fonts.googleapis.com"/>
                 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -59,6 +60,12 @@ pub struct ProjectFilters {
     pub sort: Option<String>,
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct InitialPageData {
+    pub topics: Vec<String>,
+    pub contributions: Vec<ContributionData>,
+}
+
 #[server(FetchProjects)]
 #[cfg_attr(feature = "ssr", tracing::instrument(skip_all, fields(
     filter.kind = ?filters.kind,
@@ -68,11 +75,15 @@ pub struct ProjectFilters {
 )))]
 pub async fn fetch_projects(filters: ProjectFilters) -> Result<Vec<ProjectData>, ServerFnError> {
     use crate::db::{get_projects, ProjectFilters as DbFilters, ProjectKind, SortOrder};
+    use crate::state::AppState;
     use axum::Extension;
     use leptos_axum::extract;
-    use sqlx::PgPool;
 
-    let Extension(pool): Extension<PgPool> = extract().await?;
+    let Extension(app_state): Extension<AppState> = extract().await?;
+    let pool = app_state
+        .pool
+        .as_ref()
+        .ok_or_else(|| ServerFnError::new("Database not available"))?;
 
     let db_filters = DbFilters {
         kind: filters
@@ -87,7 +98,7 @@ pub async fn fetch_projects(filters: ProjectFilters) -> Result<Vec<ProjectData>,
             .and_then(|s| s.parse::<SortOrder>().ok()),
     };
 
-    let projects = get_projects(&pool, &db_filters)
+    let projects = get_projects(pool, &db_filters)
         .await
         .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?;
 
@@ -111,13 +122,17 @@ pub async fn fetch_projects(filters: ProjectFilters) -> Result<Vec<ProjectData>,
 #[server(FetchTopics)]
 pub async fn fetch_topics() -> Result<Vec<String>, ServerFnError> {
     use crate::db::get_distinct_topics;
+    use crate::state::AppState;
     use axum::Extension;
     use leptos_axum::extract;
-    use sqlx::PgPool;
 
-    let Extension(pool): Extension<PgPool> = extract().await?;
+    let Extension(app_state): Extension<AppState> = extract().await?;
+    let pool = app_state
+        .pool
+        .as_ref()
+        .ok_or_else(|| ServerFnError::new("Database not available"))?;
 
-    let topics = get_distinct_topics(&pool)
+    let topics = get_distinct_topics(pool)
         .await
         .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?;
 
@@ -127,13 +142,17 @@ pub async fn fetch_topics() -> Result<Vec<String>, ServerFnError> {
 #[server(FetchContributions)]
 pub async fn fetch_contributions() -> Result<Vec<ContributionData>, ServerFnError> {
     use crate::db::get_contributions;
+    use crate::state::AppState;
     use axum::Extension;
     use leptos_axum::extract;
-    use sqlx::PgPool;
 
-    let Extension(pool): Extension<PgPool> = extract().await?;
+    let Extension(app_state): Extension<AppState> = extract().await?;
+    let pool = app_state
+        .pool
+        .as_ref()
+        .ok_or_else(|| ServerFnError::new("Database not available"))?;
 
-    let contributions = get_contributions(&pool, 10, 2)
+    let contributions = get_contributions(pool, 10, 2)
         .await
         .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?;
 
@@ -146,6 +165,41 @@ pub async fn fetch_contributions() -> Result<Vec<ContributionData>, ServerFnErro
             merged_at: c.merged_at.map(|dt| dt.format("%Y-%m-%d").to_string()),
         })
         .collect())
+}
+
+#[server(FetchInitialPageData)]
+pub async fn fetch_initial_page_data() -> Result<InitialPageData, ServerFnError> {
+    use crate::db::{get_contributions, get_distinct_topics};
+    use crate::state::AppState;
+    use axum::Extension;
+    use leptos_axum::extract;
+
+    let Extension(app_state): Extension<AppState> = extract().await?;
+    let pool = app_state
+        .pool
+        .as_ref()
+        .ok_or_else(|| ServerFnError::new("Database not available"))?;
+
+    let (topics_result, contributions_result) =
+        tokio::join!(get_distinct_topics(pool), get_contributions(pool, 10, 2));
+
+    let topics = topics_result.map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?;
+
+    let contributions = contributions_result
+        .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?
+        .into_iter()
+        .map(|c| ContributionData {
+            repo_name: format!("{}/{}", c.repo_owner, c.repo_name),
+            title: c.title.unwrap_or_default(),
+            url: c.url,
+            merged_at: c.merged_at.map(|dt| dt.format("%Y-%m-%d").to_string()),
+        })
+        .collect();
+
+    Ok(InitialPageData {
+        topics,
+        contributions,
+    })
 }
 
 #[component]
@@ -163,8 +217,7 @@ fn HomePage() -> impl IntoView {
     });
 
     let projects = Resource::new(move || filters.get(), fetch_projects);
-    let topics = Resource::new(|| (), |_| fetch_topics());
-    let contributions = Resource::new(|| (), |_| fetch_contributions());
+    let initial_data = Resource::new(|| (), |_| fetch_initial_page_data());
 
     let navigate = leptos_router::hooks::use_navigate();
 
@@ -215,8 +268,9 @@ fn HomePage() -> impl IntoView {
                 <h2>"Projects"</h2>
                 {move || {
                     let f = current_filters.get();
-                    let available_topics = topics.get()
+                    let available_topics = initial_data.get()
                         .and_then(|r| r.ok())
+                        .map(|d| d.topics)
                         .unwrap_or_default();
                     view! {
                         <FilterBar
@@ -251,10 +305,10 @@ fn HomePage() -> impl IntoView {
                 <h2>"Contributions"</h2>
                 <Suspense fallback=move || view! { <ContributionsEmpty /> }>
                     {move || {
-                        contributions.get().map(|result| {
+                        initial_data.get().map(|result| {
                             match result {
-                                Ok(data) if !data.is_empty() => {
-                                    view! { <ContributionsList contributions=data /> }.into_any()
+                                Ok(data) if !data.contributions.is_empty() => {
+                                    view! { <ContributionsList contributions=data.contributions /> }.into_any()
                                 }
                                 _ => view! { <ContributionsEmpty /> }.into_any(),
                             }

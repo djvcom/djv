@@ -290,12 +290,12 @@
               environment =
                 let
                   # Build DATABASE_URL based on config
-                  # For socket auth: postgres://user@/dbname?host=/run/postgresql
+                  # For socket auth: postgres:///dbname?host=/run/postgresql&user=user
                   # For TCP: postgres://user:password@host:port/dbname
                   dbUrl =
                     if cfg.database.enable then
                       if lib.hasPrefix "/" cfg.database.host then
-                        "postgres://${cfg.database.user}@/${cfg.database.name}?host=${cfg.database.host}"
+                        "postgres:///${cfg.database.name}?host=${cfg.database.host}&user=${cfg.database.user}"
                       else
                         "postgres://${cfg.database.user}@${cfg.database.host}:${toString cfg.database.port}/${cfg.database.name}"
                     else
