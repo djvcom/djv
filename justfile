@@ -11,10 +11,10 @@ lint:
     deadnix .
 
 test:
-    SQLX_OFFLINE=true cargo test --features ssr
+    SQLX_OFFLINE=true DATABASE_URL="${DATABASE_URL:-postgres:///djv_test?host=/run/postgresql}" cargo test --features ssr
 
 test-watch:
-    SQLX_OFFLINE=true cargo watch -x 'test --features ssr'
+    SQLX_OFFLINE=true DATABASE_URL="${DATABASE_URL:-postgres:///djv_test?host=/run/postgresql}" cargo watch -x 'test --features ssr'
 
 check: fmt lint test
     @echo "All checks passed"
@@ -30,6 +30,7 @@ db-setup:
     @echo "Creating databases..."
     createdb djv 2>/dev/null || echo "djv database already exists"
     createdb djv_dev 2>/dev/null || echo "djv_dev database already exists"
+    createdb djv_test 2>/dev/null || echo "djv_test database already exists"
     @echo "Done! Databases ready."
 
 db-migrate:

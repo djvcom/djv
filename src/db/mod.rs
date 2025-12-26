@@ -1,6 +1,9 @@
 pub mod models;
 pub mod queries;
 
+#[cfg(test)]
+mod tests;
+
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 use std::time::Duration;

@@ -37,15 +37,29 @@ jobs:
   rust-test:
     name: Rust test
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: djv_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
       SQLX_OFFLINE: true
+      DATABASE_URL: postgres://postgres:test@localhost/djv_test
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@nightly
         with:
           targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
-      - run: cargo test
+      - run: cargo test --features ssr
 
   sqlx-check:
     name: sqlx cache check
