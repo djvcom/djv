@@ -180,7 +180,7 @@ jobs:
     name: Update stable tag
     runs-on: ubuntu-latest
     needs: [rust-fmt, rust-clippy, rust-test, sqlx-check, nix-fmt, nix-lint, nix-build, e2e-test]
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'chore: release') }}
+    if: "github.event_name == 'push' && github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'chore: release')"
     permissions:
       contents: write
     steps:
