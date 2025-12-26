@@ -98,7 +98,7 @@ pub async fn fetch_projects(filters: ProjectFilters) -> Result<Vec<ProjectData>,
             .and_then(|s| s.parse::<SortOrder>().ok()),
     };
 
-    let projects = get_projects(&pool, &db_filters)
+    let projects = get_projects(pool, &db_filters)
         .await
         .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?;
 
@@ -132,7 +132,7 @@ pub async fn fetch_topics() -> Result<Vec<String>, ServerFnError> {
         .as_ref()
         .ok_or_else(|| ServerFnError::new("Database not available"))?;
 
-    let topics = get_distinct_topics(&pool)
+    let topics = get_distinct_topics(pool)
         .await
         .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?;
 
@@ -152,7 +152,7 @@ pub async fn fetch_contributions() -> Result<Vec<ContributionData>, ServerFnErro
         .as_ref()
         .ok_or_else(|| ServerFnError::new("Database not available"))?;
 
-    let contributions = get_contributions(&pool, 10, 2)
+    let contributions = get_contributions(pool, 10, 2)
         .await
         .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?;
 
