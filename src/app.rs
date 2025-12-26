@@ -59,6 +59,12 @@ pub struct ProjectFilters {
     pub sort: Option<String>,
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct InitialPageData {
+    pub topics: Vec<String>,
+    pub contributions: Vec<ContributionData>,
+}
+
 #[server(FetchProjects)]
 #[cfg_attr(feature = "ssr", tracing::instrument(skip_all, fields(
     filter.kind = ?filters.kind,
@@ -160,6 +166,41 @@ pub async fn fetch_contributions() -> Result<Vec<ContributionData>, ServerFnErro
         .collect())
 }
 
+#[server(FetchInitialPageData)]
+pub async fn fetch_initial_page_data() -> Result<InitialPageData, ServerFnError> {
+    use crate::db::{get_contributions, get_distinct_topics};
+    use crate::state::AppState;
+    use axum::Extension;
+    use leptos_axum::extract;
+
+    let Extension(app_state): Extension<AppState> = extract().await?;
+    let pool = app_state
+        .pool
+        .as_ref()
+        .ok_or_else(|| ServerFnError::new("Database not available"))?;
+
+    let (topics_result, contributions_result) =
+        tokio::join!(get_distinct_topics(pool), get_contributions(pool, 10, 2));
+
+    let topics = topics_result.map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?;
+
+    let contributions = contributions_result
+        .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?
+        .into_iter()
+        .map(|c| ContributionData {
+            repo_name: format!("{}/{}", c.repo_owner, c.repo_name),
+            title: c.title.unwrap_or_default(),
+            url: c.url,
+            merged_at: c.merged_at.map(|dt| dt.format("%Y-%m-%d").to_string()),
+        })
+        .collect();
+
+    Ok(InitialPageData {
+        topics,
+        contributions,
+    })
+}
+
 #[component]
 fn HomePage() -> impl IntoView {
     let query = use_query_map();
@@ -175,8 +216,7 @@ fn HomePage() -> impl IntoView {
     });
 
     let projects = Resource::new(move || filters.get(), fetch_projects);
-    let topics = Resource::new(|| (), |_| fetch_topics());
-    let contributions = Resource::new(|| (), |_| fetch_contributions());
+    let initial_data = Resource::new(|| (), |_| fetch_initial_page_data());
 
     let navigate = leptos_router::hooks::use_navigate();
 
@@ -227,8 +267,9 @@ fn HomePage() -> impl IntoView {
                 <h2>"Projects"</h2>
                 {move || {
                     let f = current_filters.get();
-                    let available_topics = topics.get()
+                    let available_topics = initial_data.get()
                         .and_then(|r| r.ok())
+                        .map(|d| d.topics)
                         .unwrap_or_default();
                     view! {
                         <FilterBar
@@ -263,10 +304,10 @@ fn HomePage() -> impl IntoView {
                 <h2>"Contributions"</h2>
                 <Suspense fallback=move || view! { <ContributionsEmpty /> }>
                     {move || {
-                        contributions.get().map(|result| {
+                        initial_data.get().map(|result| {
                             match result {
-                                Ok(data) if !data.is_empty() => {
-                                    view! { <ContributionsList contributions=data /> }.into_any()
+                                Ok(data) if !data.contributions.is_empty() => {
+                                    view! { <ContributionsList contributions=data.contributions /> }.into_any()
                                 }
                                 _ => view! { <ContributionsEmpty /> }.into_any(),
                             }
