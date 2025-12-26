@@ -55,6 +55,7 @@
               binaryen
               dart-sass
               wasm-bindgen-cli
+              sqlx-cli
               just
               rust-analyzer
 
@@ -92,6 +93,7 @@
               (pkgs.lib.hasSuffix ".scss" path)
               || (pkgs.lib.hasSuffix ".svg" path)
               || (pkgs.lib.hasSuffix ".sql" path)
+              || (pkgs.lib.hasInfix ".sqlx" path)
               || (craneLib.filterCargoSources path type);
           };
 

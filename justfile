@@ -6,7 +6,7 @@ fmt:
     nixfmt *.nix
 
 lint:
-    cargo clippy --all-features -- -D warnings
+    SQLX_OFFLINE=true cargo clippy --all-features -- -D warnings
     statix check .
     deadnix .
 
@@ -38,3 +38,12 @@ db-reset:
     dropdb --if-exists $(basename $DATABASE_URL)
     createdb $(basename $DATABASE_URL)
     @echo "Database reset. Run 'just db-migrate' to apply migrations."
+
+db-prepare:
+    @echo "Generating sqlx query cache..."
+    cargo sqlx prepare -- --all-targets --all-features
+    @echo "Done! Commit .sqlx/ directory to version control."
+
+db-prepare-check:
+    @echo "Verifying sqlx query cache is up-to-date..."
+    cargo sqlx prepare --check -- --all-targets --all-features

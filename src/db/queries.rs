@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use sqlx::{PgPool, Row};
+use sqlx::PgPool;
 use uuid::Uuid;
 
 use super::models::{Contribution, ProjectFilters, ProjectKind, ProjectView, SortOrder};
@@ -21,7 +21,7 @@ pub async fn upsert_repository(
     topics: &[String],
     updated_at: Option<DateTime<Utc>>,
 ) -> Result<Uuid, sqlx::Error> {
-    let row = sqlx::query(
+    let id = sqlx::query_scalar!(
         r#"
         INSERT INTO repositories (forge, forge_id, name, description, url, language, stars, topics, updated_at, synced_at)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now())
@@ -36,29 +36,28 @@ pub async fn upsert_repository(
             synced_at = now()
         RETURNING id
         "#,
+        forge,
+        forge_id,
+        name,
+        description,
+        url,
+        language,
+        stars,
+        topics,
+        updated_at,
     )
-    .bind(forge)
-    .bind(forge_id)
-    .bind(name)
-    .bind(description)
-    .bind(url)
-    .bind(language)
-    .bind(stars)
-    .bind(topics)
-    .bind(updated_at)
     .fetch_one(pool)
     .await?;
 
-    Ok(row.get("id"))
+    Ok(id)
 }
 
 pub async fn get_repository_by_url(pool: &PgPool, url: &str) -> Result<Option<Uuid>, sqlx::Error> {
-    let row = sqlx::query("SELECT id FROM repositories WHERE url = $1")
-        .bind(url)
+    let id = sqlx::query_scalar!("SELECT id FROM repositories WHERE url = $1", url)
         .fetch_optional(pool)
         .await?;
 
-    Ok(row.map(|r| r.get("id")))
+    Ok(id)
 }
 
 // ============================================================================
@@ -78,7 +77,7 @@ pub async fn upsert_crate(
     keywords: &[String],
     categories: &[String],
 ) -> Result<Uuid, sqlx::Error> {
-    let row = sqlx::query(
+    let id = sqlx::query_scalar!(
         r#"
         INSERT INTO crates (name, description, repository_id, crates_io_url, documentation_url, downloads, version, keywords, categories, synced_at)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now())
@@ -94,20 +93,20 @@ pub async fn upsert_crate(
             synced_at = now()
         RETURNING id
         "#,
+        name,
+        description,
+        repository_id,
+        crates_io_url,
+        documentation_url,
+        downloads,
+        version,
+        keywords,
+        categories,
     )
-    .bind(name)
-    .bind(description)
-    .bind(repository_id)
-    .bind(crates_io_url)
-    .bind(documentation_url)
-    .bind(downloads)
-    .bind(version)
-    .bind(keywords)
-    .bind(categories)
     .fetch_one(pool)
     .await?;
 
-    Ok(row.get("id"))
+    Ok(id)
 }
 
 // ============================================================================
@@ -126,7 +125,7 @@ pub async fn upsert_npm_package(
     version: Option<&str>,
     keywords: &[String],
 ) -> Result<Uuid, sqlx::Error> {
-    let row = sqlx::query(
+    let id = sqlx::query_scalar!(
         r#"
         INSERT INTO npm_packages (name, scope, description, repository_id, npm_url, downloads_weekly, version, keywords, synced_at)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now())
@@ -141,19 +140,19 @@ pub async fn upsert_npm_package(
             synced_at = now()
         RETURNING id
         "#,
+        name,
+        scope,
+        description,
+        repository_id,
+        npm_url,
+        downloads_weekly,
+        version,
+        keywords,
     )
-    .bind(name)
-    .bind(scope)
-    .bind(description)
-    .bind(repository_id)
-    .bind(npm_url)
-    .bind(downloads_weekly)
-    .bind(version)
-    .bind(keywords)
     .fetch_one(pool)
     .await?;
 
-    Ok(row.get("id"))
+    Ok(id)
 }
 
 // ============================================================================
@@ -172,7 +171,7 @@ pub async fn upsert_contribution(
     url: &str,
     merged_at: Option<DateTime<Utc>>,
 ) -> Result<Uuid, sqlx::Error> {
-    let row = sqlx::query(
+    let id = sqlx::query_scalar!(
         r#"
         INSERT INTO contributions (forge, repo_owner, repo_name, repo_url, contribution_type, title, url, merged_at, synced_at)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now())
@@ -184,19 +183,19 @@ pub async fn upsert_contribution(
             synced_at = now()
         RETURNING id
         "#,
+        forge,
+        repo_owner,
+        repo_name,
+        repo_url,
+        contribution_type,
+        title,
+        url,
+        merged_at,
     )
-    .bind(forge)
-    .bind(repo_owner)
-    .bind(repo_name)
-    .bind(repo_url)
-    .bind(contribution_type)
-    .bind(title)
-    .bind(url)
-    .bind(merged_at)
     .fetch_one(pool)
     .await?;
 
-    Ok(row.get("id"))
+    Ok(id)
 }
 
 pub async fn get_contributions(
@@ -204,7 +203,8 @@ pub async fn get_contributions(
     limit: i64,
     max_age_years: i32,
 ) -> Result<Vec<Contribution>, sqlx::Error> {
-    let rows = sqlx::query(
+    let max_age = f64::from(max_age_years);
+    let rows = sqlx::query!(
         r#"
         SELECT id, forge, repo_owner, repo_name, repo_url, contribution_type, title, url, merged_at, synced_at
         FROM contributions
@@ -212,25 +212,25 @@ pub async fn get_contributions(
         ORDER BY merged_at DESC NULLS LAST
         LIMIT $1
         "#,
+        limit,
+        max_age,
     )
-    .bind(limit)
-    .bind(max_age_years)
     .fetch_all(pool)
     .await?;
 
     Ok(rows
         .into_iter()
         .map(|row| Contribution {
-            id: row.get("id"),
-            forge: row.get("forge"),
-            repo_owner: row.get("repo_owner"),
-            repo_name: row.get("repo_name"),
-            repo_url: row.get("repo_url"),
-            contribution_type: row.get("contribution_type"),
-            title: row.get("title"),
-            url: row.get("url"),
-            merged_at: row.get("merged_at"),
-            synced_at: row.get("synced_at"),
+            id: row.id,
+            forge: row.forge,
+            repo_owner: row.repo_owner,
+            repo_name: row.repo_name,
+            repo_url: row.repo_url,
+            contribution_type: row.contribution_type,
+            title: row.title,
+            url: row.url,
+            merged_at: row.merged_at,
+            synced_at: row.synced_at,
         })
         .collect())
 }
@@ -239,62 +239,146 @@ pub async fn get_contributions(
 // Project view queries
 // ============================================================================
 
+/// Internal struct for database rows from projects view
+struct ProjectRow {
+    id: Uuid,
+    kind: String,
+    name: String,
+    description: Option<String>,
+    url: String,
+    language: Option<String>,
+    topics: Option<Vec<String>>,
+    popularity: Option<i32>,
+    version: Option<String>,
+    commit_count: Option<i32>,
+    updated_at: Option<DateTime<Utc>>,
+    synced_at: DateTime<Utc>,
+}
+
+impl From<ProjectRow> for ProjectView {
+    fn from(row: ProjectRow) -> Self {
+        Self {
+            id: row.id,
+            kind: row.kind.parse().unwrap_or(ProjectKind::Repo),
+            name: row.name,
+            description: row.description,
+            url: row.url,
+            language: row.language,
+            topics: row.topics.unwrap_or_default(),
+            popularity: row.popularity.unwrap_or(0),
+            version: row.version,
+            commit_count: row.commit_count,
+            updated_at: row.updated_at,
+            synced_at: row.synced_at,
+        }
+    }
+}
+
 pub async fn get_projects(
     pool: &PgPool,
     filters: &ProjectFilters,
 ) -> Result<Vec<ProjectView>, sqlx::Error> {
     let kind_filter = filters.kind.map(|k| k.to_string());
-    let language_filter = filters.language.as_deref();
-    let topic_filter = filters.topic.as_deref();
+    let language_filter = filters.language.clone();
+    let topic_filter = filters.topic.clone();
 
-    let order_by = match filters.sort.unwrap_or_default() {
-        SortOrder::Popularity => "popularity DESC NULLS LAST",
-        SortOrder::Name => "name ASC",
-        SortOrder::Updated => "synced_at DESC",
+    let rows = match filters.sort.unwrap_or_default() {
+        SortOrder::Popularity => {
+            sqlx::query_as!(
+                ProjectRow,
+                r#"
+                SELECT
+                    id as "id!",
+                    kind as "kind!",
+                    name as "name!",
+                    description,
+                    url as "url!",
+                    language,
+                    topics,
+                    popularity,
+                    version,
+                    commit_count,
+                    updated_at,
+                    synced_at as "synced_at!"
+                FROM projects
+                WHERE ($1::TEXT IS NULL OR kind = $1)
+                  AND ($2::TEXT IS NULL OR LOWER(language) = LOWER($2))
+                  AND ($3::TEXT IS NULL OR $3 = ANY(topics))
+                ORDER BY popularity DESC NULLS LAST
+                LIMIT 8
+                "#,
+                kind_filter,
+                language_filter,
+                topic_filter,
+            )
+            .fetch_all(pool)
+            .await?
+        }
+        SortOrder::Name => {
+            sqlx::query_as!(
+                ProjectRow,
+                r#"
+                SELECT
+                    id as "id!",
+                    kind as "kind!",
+                    name as "name!",
+                    description,
+                    url as "url!",
+                    language,
+                    topics,
+                    popularity,
+                    version,
+                    commit_count,
+                    updated_at,
+                    synced_at as "synced_at!"
+                FROM projects
+                WHERE ($1::TEXT IS NULL OR kind = $1)
+                  AND ($2::TEXT IS NULL OR LOWER(language) = LOWER($2))
+                  AND ($3::TEXT IS NULL OR $3 = ANY(topics))
+                ORDER BY name ASC
+                LIMIT 8
+                "#,
+                kind_filter,
+                language_filter,
+                topic_filter,
+            )
+            .fetch_all(pool)
+            .await?
+        }
+        SortOrder::Updated => {
+            sqlx::query_as!(
+                ProjectRow,
+                r#"
+                SELECT
+                    id as "id!",
+                    kind as "kind!",
+                    name as "name!",
+                    description,
+                    url as "url!",
+                    language,
+                    topics,
+                    popularity,
+                    version,
+                    commit_count,
+                    updated_at,
+                    synced_at as "synced_at!"
+                FROM projects
+                WHERE ($1::TEXT IS NULL OR kind = $1)
+                  AND ($2::TEXT IS NULL OR LOWER(language) = LOWER($2))
+                  AND ($3::TEXT IS NULL OR $3 = ANY(topics))
+                ORDER BY synced_at DESC
+                LIMIT 8
+                "#,
+                kind_filter,
+                language_filter,
+                topic_filter,
+            )
+            .fetch_all(pool)
+            .await?
+        }
     };
 
-    let query = format!(
-        r#"
-        SELECT id, kind, name, description, url, language, topics, popularity, version, commit_count, updated_at, synced_at
-        FROM projects
-        WHERE ($1::TEXT IS NULL OR kind = $1)
-          AND ($2::TEXT IS NULL OR LOWER(language) = LOWER($2))
-          AND ($3::TEXT IS NULL OR $3 = ANY(topics))
-        ORDER BY {}
-        LIMIT 8
-        "#,
-        order_by
-    );
-
-    let rows = sqlx::query(&query)
-        .bind(kind_filter)
-        .bind(language_filter)
-        .bind(topic_filter)
-        .fetch_all(pool)
-        .await?;
-
-    Ok(rows
-        .into_iter()
-        .map(|row| {
-            let kind_str: String = row.get("kind");
-            ProjectView {
-                id: row.get("id"),
-                kind: kind_str.parse().unwrap_or(ProjectKind::Repo),
-                name: row.get("name"),
-                description: row.get("description"),
-                url: row.get("url"),
-                language: row.get("language"),
-                topics: row
-                    .get::<Option<Vec<String>>, _>("topics")
-                    .unwrap_or_default(),
-                popularity: row.get::<Option<i32>, _>("popularity").unwrap_or(0),
-                version: row.get("version"),
-                commit_count: row.get("commit_count"),
-                updated_at: row.get("updated_at"),
-                synced_at: row.get("synced_at"),
-            }
-        })
-        .collect())
+    Ok(rows.into_iter().map(ProjectView::from).collect())
 }
 
 pub async fn get_all_projects(pool: &PgPool) -> Result<Vec<ProjectView>, sqlx::Error> {
@@ -302,16 +386,16 @@ pub async fn get_all_projects(pool: &PgPool) -> Result<Vec<ProjectView>, sqlx::E
 }
 
 pub async fn get_distinct_topics(pool: &PgPool) -> Result<Vec<String>, sqlx::Error> {
-    let rows = sqlx::query(
+    let rows = sqlx::query_scalar!(
         r#"
-        SELECT DISTINCT unnest(topics) as topic
+        SELECT DISTINCT unnest(topics) as "topic!"
         FROM projects
         WHERE topics IS NOT NULL AND array_length(topics, 1) > 0
-        ORDER BY topic
-        "#,
+        ORDER BY 1
+        "#
     )
     .fetch_all(pool)
     .await?;
 
-    Ok(rows.into_iter().map(|row| row.get("topic")).collect())
+    Ok(rows)
 }

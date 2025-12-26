@@ -1,0 +1,77 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, forge, repo_owner, repo_name, repo_url, contribution_type, title, url, merged_at, synced_at\n        FROM contributions\n        WHERE merged_at IS NULL OR merged_at > NOW() - INTERVAL '1 year' * $2\n        ORDER BY merged_at DESC NULLS LAST\n        LIMIT $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "forge",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "repo_owner",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "repo_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "repo_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "contribution_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "merged_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "synced_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Float8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "67f14ac215ff518191dadc9d6fcb293996e2f2c78b7ba918aaddba03eb44d993"
+}

@@ -23,6 +23,8 @@ jobs:
   rust-clippy:
     name: Rust clippy
     runs-on: ubuntu-latest
+    env:
+      SQLX_OFFLINE: true
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@nightly
@@ -35,6 +37,8 @@ jobs:
   rust-test:
     name: Rust test
     runs-on: ubuntu-latest
+    env:
+      SQLX_OFFLINE: true
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@nightly
@@ -42,6 +46,20 @@ jobs:
           targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
       - run: cargo test
+
+  sqlx-check:
+    name: sqlx cache check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo install sqlx-cli --no-default-features --features postgres
+      - run: cargo sqlx prepare --check -- --all-targets --all-features
+        env:
+          SQLX_OFFLINE: true
 
   nix-fmt:
     name: Nix format
@@ -80,7 +98,7 @@ jobs:
   update-stable:
     name: Update stable tag
     runs-on: ubuntu-latest
-    needs: [rust-fmt, rust-clippy, rust-test, nix-fmt, nix-lint, nix-build]
+    needs: [rust-fmt, rust-clippy, rust-test, sqlx-check, nix-fmt, nix-lint, nix-build]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: write
