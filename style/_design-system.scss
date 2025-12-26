@@ -103,6 +103,39 @@
 	--ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
 }
 
+// ===== DARK MODE =====
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		// Canvas & surfaces
+		--colour-canvas: oklch(18% 0.01 45);
+		--colour-surface: oklch(22% 0.01 45);
+		--colour-surface-raised: oklch(26% 0.01 45);
+
+		// Text hierarchy
+		--colour-text-primary: oklch(92% 0.008 75);
+		--colour-text-secondary: oklch(75% 0.01 70);
+		--colour-text-tertiary: oklch(58% 0.008 65);
+
+		// Borders & UI
+		--colour-border-subtle: oklch(30% 0.008 45);
+		--colour-border: oklch(38% 0.01 45);
+		--colour-border-strong: oklch(48% 0.012 50);
+
+		// Dark header (inverted from light mode)
+		--colour-header-bg: oklch(14% 0.008 40);
+		--colour-header-text: oklch(88% 0.008 75);
+
+		// Accents (adjusted for dark bg contrast)
+		--colour-accent: oklch(65% 0.03 50);
+		--colour-accent-hover: oklch(72% 0.035 50);
+		--colour-accent-sage: oklch(70% 0.04 140);
+
+		// Focus
+		--colour-focus: oklch(55% 0.04 140);
+	}
+}
+
 // ===== ACCESSIBILITY =====
 
 // Focus states
