@@ -13,7 +13,7 @@ test.describe("Empty States", () => {
     await page.goto("/?kind=npm&language=Nix");
 
     // Should show empty state
-    const emptyState = page.locator(".project-grid-empty, .projects-placeholder");
+    const emptyState = page.locator(".project-empty");
     await expect(emptyState).toBeVisible();
   });
 
