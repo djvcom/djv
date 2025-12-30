@@ -464,7 +464,6 @@ body {
 
 // Show the correct icon based on the button's mode class
 .theme-toggle--light .theme-toggle__icon--light,
-.theme-toggle--dark .theme-toggle__icon--dark,
-.theme-toggle--auto .theme-toggle__icon--auto {
+.theme-toggle--dark .theme-toggle__icon--dark {
 	display: flex;
 }

@@ -65,24 +65,19 @@ pub fn App() -> impl IntoView {
             if let Some(html) = document.document_element() {
                 if prev.is_none() {
                     // First run: sync signal FROM DOM (what blocking script set)
-                    let class_name = html.class_name();
-                    let initial_mode = if class_name.contains("dark") {
+                    let initial_mode = if html.class_name().contains("dark") {
                         ColorMode::Dark
-                    } else if class_name.contains("auto") {
-                        ColorMode::Auto
                     } else {
                         ColorMode::Light
                     };
-                    // Only update if different from server default
                     if initial_mode != current_mode {
                         set_mode.set(initial_mode);
                     }
                 } else {
                     // Subsequent runs: apply signal to DOM
-                    let class_name = current_mode.to_string();
                     let class_list = html.class_list();
-                    let _ = class_list.remove_3("light", "dark", "auto");
-                    let _ = class_list.add_1(&class_name);
+                    let _ = class_list.remove_2("light", "dark");
+                    let _ = class_list.add_1(if matches!(current_mode, ColorMode::Dark) { "dark" } else { "light" });
                 }
             }
         }

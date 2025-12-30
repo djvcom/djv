@@ -11,8 +11,7 @@ pub fn ThemeToggle() -> impl IntoView {
         let current = theme.mode.get();
         let next = match current {
             ColorMode::Light => ColorMode::Dark,
-            ColorMode::Dark => ColorMode::Auto,
-            ColorMode::Auto | ColorMode::Custom(_) => ColorMode::Light,
+            _ => ColorMode::Light,
         };
 
         // Save to cookie
@@ -29,24 +28,19 @@ pub fn ThemeToggle() -> impl IntoView {
         theme.set_mode.set(next);
     };
 
-    let mode_class = move || {
-        let current = theme.mode.get();
-        match current {
-            ColorMode::Light => "theme-toggle--light",
-            ColorMode::Dark => "theme-toggle--dark",
-            ColorMode::Auto | ColorMode::Custom(_) => "theme-toggle--auto",
-        }
-    };
+    let is_dark = move || !matches!(theme.mode.get(), ColorMode::Light);
 
-    let label = move || match theme.mode.get() {
-        ColorMode::Light => "Light mode (click for dark)",
-        ColorMode::Dark => "Dark mode (click for auto)",
-        ColorMode::Auto | ColorMode::Custom(_) => "Auto mode (click for light)",
+    let label = move || {
+        if is_dark() {
+            "Switch to light mode"
+        } else {
+            "Switch to dark mode"
+        }
     };
 
     view! {
         <button
-            class=move || format!("theme-toggle {}", mode_class())
+            class=move || if is_dark() { "theme-toggle theme-toggle--dark" } else { "theme-toggle theme-toggle--light" }
             on:click=toggle
             aria-label=label
             title=label
@@ -56,9 +50,6 @@ pub fn ThemeToggle() -> impl IntoView {
             </span>
             <span class="theme-toggle__icon theme-toggle__icon--dark" aria-hidden="true">
                 <MoonIcon />
-            </span>
-            <span class="theme-toggle__icon theme-toggle__icon--auto" aria-hidden="true">
-                <AutoIcon />
             </span>
         </button>
     }
@@ -90,12 +81,3 @@ fn MoonIcon() -> impl IntoView {
     }
 }
 
-#[component]
-fn AutoIcon() -> impl IntoView {
-    view! {
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <path d="M12 2a10 10 0 0 1 0 20z" fill="currentColor"/>
-        </svg>
-    }
-}
