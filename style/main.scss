@@ -36,7 +36,7 @@ body {
 	justify-content: space-between;
 	align-items: flex-start;
 	gap: var(--space-8);
-	margin-bottom: var(--space-24);
+	margin-bottom: var(--space-32);
 }
 
 .hero__title {
@@ -45,10 +45,10 @@ body {
 
 .hero h1 {
 	font-size: var(--text-display);
-	font-weight: var(--weight-light);
-	letter-spacing: var(--tracking-tight);
+	font-weight: var(--weight-regular);
+	letter-spacing: -0.015em;
 	line-height: var(--leading-tight);
-	margin-bottom: var(--space-6);
+	margin-bottom: var(--space-8);
 }
 
 .tagline {
@@ -74,7 +74,7 @@ body {
 	text-transform: uppercase;
 	letter-spacing: var(--tracking-wider);
 	color: var(--colour-text-tertiary);
-	margin-bottom: var(--space-12);
+	margin-bottom: var(--space-16);
 }
 
 // ===== PROJECT LIST (Single Column) =====
@@ -104,10 +104,13 @@ body {
 	text-decoration: none;
 	color: inherit;
 	cursor: pointer;
-	transition: border-color var(--duration-medium) var(--ease-out);
+	transition:
+		border-color var(--duration-medium) var(--ease-out),
+		transform var(--duration-fast) var(--ease-out);
 
 	&:hover {
 		border-bottom-color: var(--colour-accent);
+		transform: translateY(-2px);
 	}
 }
 
@@ -202,7 +205,9 @@ body {
 	width: 1.125rem;
 	height: 1.125rem;
 	opacity: 0.6;
-	transition: opacity var(--duration-fast) var(--ease-out);
+	transition:
+		opacity var(--duration-fast) var(--ease-out),
+		transform var(--duration-fast) var(--ease-out);
 
 	img {
 		width: 100%;
@@ -217,6 +222,7 @@ body {
 
 		&:hover {
 			opacity: 1;
+			transform: scale(1.15);
 
 			img {
 				filter: none;
@@ -250,12 +256,55 @@ body {
 // ===== FILTER BAR =====
 
 .filter-bar {
-	display: flex;
-	gap: var(--space-8);
 	margin-bottom: var(--space-12);
 	padding-bottom: var(--space-6);
 	border-bottom: 1px solid var(--colour-border-subtle);
+}
+
+.filter-summary {
+	display: flex;
+	align-items: baseline;
+	gap: var(--space-2);
+	font-size: var(--text-small);
+	color: var(--colour-text-secondary);
+
+	@media (max-width: 767px) {
+		justify-content: space-between;
+	}
+}
+
+.filter-count {
+	color: var(--colour-text-primary);
+}
+
+.filter-current {
+	color: var(--colour-text-tertiary);
+}
+
+.filter-toggle {
+	font-family: var(--font-serif);
+	font-size: var(--text-small);
+	color: var(--colour-accent);
+	background: none;
+	border: none;
+	padding: 0;
+	cursor: pointer;
+	text-decoration: underline;
+	text-underline-offset: 2px;
+	transition: color var(--duration-medium) var(--ease-out);
+
+	&:hover {
+		color: var(--colour-accent-hover);
+	}
+}
+
+.filter-groups {
+	display: flex;
 	flex-wrap: wrap;
+	gap: var(--space-8);
+	margin-top: var(--space-6);
+	padding-top: var(--space-6);
+	border-top: 1px solid var(--colour-border-subtle);
 }
 
 .filter-group {
@@ -288,7 +337,9 @@ body {
 	color: var(--colour-text-tertiary);
 	cursor: pointer;
 	position: relative;
-	transition: color var(--duration-medium) var(--ease-out);
+	transition:
+		color var(--duration-medium) var(--ease-out),
+		transform var(--duration-fast) var(--ease-out);
 
 	&::after {
 		content: '';
@@ -303,6 +354,7 @@ body {
 
 	&:hover {
 		color: var(--colour-text-primary);
+		transform: translateY(-1px);
 
 		&::after {
 			background: var(--colour-border);
@@ -322,8 +374,8 @@ body {
 // ===== CONTRIBUTIONS SECTION =====
 
 .contributions {
-	margin-top: var(--space-16);
-	padding-top: var(--space-12);
+	margin-top: var(--space-24);
+	padding-top: var(--space-16);
 	border-top: 1px solid var(--colour-border-subtle);
 }
 
@@ -334,7 +386,7 @@ body {
 	text-transform: uppercase;
 	letter-spacing: var(--tracking-wider);
 	color: var(--colour-text-tertiary);
-	margin-bottom: var(--space-8);
+	margin-bottom: var(--space-12);
 }
 
 .contributions-list {
@@ -350,11 +402,16 @@ body {
 	text-decoration: none;
 	color: inherit;
 	cursor: pointer;
-	padding: var(--space-2) 0;
-	transition: color var(--duration-medium) var(--ease-out);
+	padding: var(--space-2) var(--space-3);
+	margin: 0 calc(-1 * var(--space-3));
+	border-radius: 4px;
+	transition:
+		color var(--duration-medium) var(--ease-out),
+		background-color var(--duration-medium) var(--ease-out);
 
 	&:hover {
 		color: var(--colour-accent);
+		background-color: var(--colour-surface);
 	}
 
 	&:hover .contribution-repo {
@@ -391,6 +448,18 @@ body {
 	align-items: center;
 	justify-content: center;
 	min-height: 300px;
+	animation: fadeIn var(--duration-comfortable) var(--ease-out);
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+		transform: translateY(8px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 
 .placeholder-art {
@@ -398,6 +467,17 @@ body {
 	max-width: 400px;
 	height: auto;
 	margin-bottom: var(--space-6);
+	animation: pulse 2s var(--ease-in-out) infinite;
+}
+
+@keyframes pulse {
+	0%,
+	100% {
+		opacity: 0.6;
+	}
+	50% {
+		opacity: 0.4;
+	}
 }
 
 .placeholder-text {
@@ -417,10 +497,27 @@ body {
 		font-size: var(--text-small);
 		color: var(--colour-text-secondary);
 		text-decoration: none;
+		position: relative;
+		display: inline-block;
 		transition: color var(--duration-medium) var(--ease-out);
+
+		&::after {
+			content: '';
+			position: absolute;
+			bottom: -2px;
+			left: 0;
+			width: 0;
+			height: 1px;
+			background: var(--colour-accent);
+			transition: width var(--duration-deliberate) var(--ease-out);
+		}
 
 		&:hover {
 			color: var(--colour-accent);
+
+			&::after {
+				width: 100%;
+			}
 		}
 	}
 }
@@ -443,11 +540,29 @@ body {
 	transition:
 		border-color var(--duration-medium) var(--ease-out),
 		background-color var(--duration-medium) var(--ease-out),
-		color var(--duration-medium) var(--ease-out);
+		color var(--duration-medium) var(--ease-out),
+		transform var(--duration-fast) var(--ease-out),
+		box-shadow var(--duration-fast) var(--ease-out);
 
 	&:hover {
 		border-color: var(--colour-border);
 		color: var(--colour-text-primary);
+		transform: translateY(-1px);
+		box-shadow: 0 2px 8px oklch(0% 0 0 / 0.08);
+	}
+
+	&:active {
+		transform: translateY(0);
+		transition-duration: var(--duration-instant);
+	}
+
+	&:focus-visible {
+		outline: 2px solid var(--colour-focus);
+		outline-offset: 2px;
+	}
+
+	&:hover .theme-toggle__icon {
+		transform: rotate(15deg);
 	}
 }
 
@@ -455,6 +570,7 @@ body {
 	display: none;
 	align-items: center;
 	justify-content: center;
+	transition: transform var(--duration-comfortable) var(--ease-out);
 
 	svg {
 		width: 1.25rem;

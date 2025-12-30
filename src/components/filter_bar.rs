@@ -14,8 +14,18 @@ pub fn FilterBar(
     topic_filter: Option<String>,
     sort_filter: Option<String>,
     #[prop(optional)] topics: Vec<String>,
+    #[prop(optional)] project_count: Option<usize>,
     #[prop(into)] on_filter_change: Callback<(String, Option<String>)>,
 ) -> impl IntoView {
+    // Collapsed/expanded state for filter groups
+    let (is_expanded, set_expanded) = signal(false);
+
+    // Derive current sort label for summary
+    let current_sort = match sort_filter.as_deref() {
+        Some("name") => "name",
+        Some("updated") => "recent",
+        _ => "popular",
+    };
     let kinds = vec![
         FilterOption {
             value: "".to_string(),
@@ -121,14 +131,30 @@ pub fn FilterBar(
 
     view! {
         <div class="filter-bar">
-            {render_group("kind", kinds)}
-            {render_group("language", languages)}
-            {if show_topics {
-                Some(render_group("topic", topic_options))
-            } else {
-                None
-            }}
-            {render_group("sort", sorts)}
+            <div class="filter-summary">
+                {project_count.map(|count| view! {
+                    <span class="filter-count">{count} " projects"</span>
+                })}
+                <span class="filter-current">" · sorted by " {current_sort}</span>
+                <button
+                    class="filter-toggle"
+                    on:click=move |_| set_expanded.update(|v| *v = !*v)
+                >
+                    {move || if is_expanded.get() { "hide filters" } else { "filter" }}
+                </button>
+            </div>
+            <Show when=move || is_expanded.get()>
+                <div class="filter-groups">
+                    {render_group("kind", kinds.clone())}
+                    {render_group("language", languages.clone())}
+                    {if show_topics {
+                        Some(render_group("topic", topic_options.clone()))
+                    } else {
+                        None
+                    }}
+                    {render_group("sort", sorts.clone())}
+                </div>
+            </Show>
         </div>
     }
 }

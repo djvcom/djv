@@ -19,8 +19,17 @@ test-watch:
 check: fmt lint test
     @echo "All checks passed"
 
+# Dev server variants
 dev:
     cargo leptos watch
+
+dev-no-db:
+    @echo "Starting dev server without database..."
+    DATABASE_URL="" cargo leptos watch
+
+dev-empty-db:
+    @echo "Starting dev server with empty test database..."
+    DATABASE_URL="postgres:///djv_test?host=/run/postgresql" cargo leptos watch
 
 build:
     cargo leptos build --release
