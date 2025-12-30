@@ -14,18 +14,11 @@ pub fn FilterBar(
     topic_filter: Option<String>,
     sort_filter: Option<String>,
     #[prop(optional)] topics: Vec<String>,
-    #[prop(optional)] project_count: Option<usize>,
     #[prop(into)] on_filter_change: Callback<(String, Option<String>)>,
 ) -> impl IntoView {
     // Collapsed/expanded state for filter groups
     let (is_expanded, set_expanded) = signal(false);
 
-    // Derive current sort label for summary
-    let current_sort = match sort_filter.as_deref() {
-        Some("name") => "name",
-        Some("updated") => "recent",
-        _ => "popular",
-    };
     let kinds = vec![
         FilterOption {
             value: "".to_string(),
@@ -129,18 +122,25 @@ pub fn FilterBar(
 
     let show_topics = !topic_options.is_empty() && topic_options.len() > 1;
 
+    // Check if any non-default filters are active
+    let has_active_filters = kind_filter.is_some()
+        || language_filter.is_some()
+        || topic_filter.is_some()
+        || sort_filter.as_deref().is_some_and(|s| s != "popularity");
+
     view! {
         <div class="filter-bar">
             <div class="filter-summary">
-                {project_count.map(|count| view! {
-                    <span class="filter-count">{count} " projects"</span>
-                })}
-                <span class="filter-current">" · sorted by " {current_sort}</span>
                 <button
                     class="filter-toggle"
+                    class:filter-toggle--active=has_active_filters
+                    aria-label="Toggle filters"
+                    aria-expanded=move || is_expanded.get()
                     on:click=move |_| set_expanded.update(|v| *v = !*v)
                 >
-                    {move || if is_expanded.get() { "hide filters" } else { "filter" }}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                    </svg>
                 </button>
             </div>
             <div

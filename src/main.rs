@@ -65,7 +65,8 @@ async fn main() -> anyhow::Result<()> {
     // Spawn background sync task if database is available
     if let Some(ref pool) = db_pool {
         use djv::sync::{
-            forges::GitHubForge, spawn_sync_task, ContributionsSync, CratesIoRegistry, SyncSource,
+            forges::{GitHubForge, GitLabForge},
+            spawn_sync_task, ContributionsSync, CratesIoRegistry, NpmRegistry, SyncSource,
             SyncSources,
         };
 
@@ -78,23 +79,45 @@ async fn main() -> anyhow::Result<()> {
             )));
         }
 
+        if let Some(ref gitlab_config) = config.sync.gitlab {
+            forges.push(Box::new(GitLabForge::new(
+                gitlab_config.user.clone(),
+                Some(gitlab_config.host.clone()),
+            )));
+        }
+
         let crates_io = config
             .sync
             .crates_io
             .as_ref()
             .map(|c| CratesIoRegistry::new(c.user.clone()));
 
+        let npm = config
+            .sync
+            .npm
+            .as_ref()
+            .map(|n| NpmRegistry::new(n.user.clone()));
+
         let contributions = config.sync.contributions.as_ref().map(|c| {
-            ContributionsSync::new(
+            let mut sync = ContributionsSync::new(
                 c.user.clone(),
                 config.sync.github.as_ref().and_then(|g| g.token.clone()),
                 config.sync.github.as_ref().map(|g| g.user.clone()),
-            )
+            );
+
+            // Add GitLab contributions if configured
+            if let Some(ref gitlab_config) = config.sync.gitlab {
+                sync =
+                    sync.with_gitlab(gitlab_config.user.clone(), Some(gitlab_config.host.clone()));
+            }
+
+            sync
         });
 
         let sources = SyncSources {
             forges,
             crates_io,
+            npm,
             contributions,
         };
 

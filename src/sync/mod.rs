@@ -9,7 +9,7 @@ use std::time::Duration;
 use tokio::time::interval;
 
 pub use contributions::{ContributionsSync, FetchedContribution};
-pub use registries::{CrateSummary, CratesIoRegistry};
+pub use registries::{CrateSummary, CratesIoRegistry, NpmPackageSummary, NpmRegistry};
 
 /// Repository data fetched from a forge (before database insertion)
 #[derive(Debug, Clone)]
@@ -83,12 +83,16 @@ impl SyncConfig {
 pub struct SyncSources {
     pub forges: Vec<Box<dyn SyncSource>>,
     pub crates_io: Option<CratesIoRegistry>,
+    pub npm: Option<NpmRegistry>,
     pub contributions: Option<ContributionsSync>,
 }
 
 impl SyncSources {
     pub fn is_empty(&self) -> bool {
-        self.forges.is_empty() && self.crates_io.is_none() && self.contributions.is_none()
+        self.forges.is_empty()
+            && self.crates_io.is_none()
+            && self.npm.is_none()
+            && self.contributions.is_none()
     }
 }
 
@@ -102,6 +106,11 @@ pub async fn run_sync(pool: &PgPool, sources: &SyncSources) -> Result<(), SyncEr
     // Sync crates.io
     if let Some(ref crates_io) = sources.crates_io {
         sync_crates(pool, crates_io).await?;
+    }
+
+    // Sync npm
+    if let Some(ref npm) = sources.npm {
+        sync_npm(pool, npm).await?;
     }
 
     // Sync contributions
@@ -118,9 +127,19 @@ async fn sync_forge(pool: &PgPool, source: &dyn SyncSource) -> Result<(), SyncEr
 
     let repositories = source.fetch_repositories().await?;
     let count = repositories.len();
+    let forge_name = source.name();
 
+    // Collect IDs of all synced repositories
+    let mut synced_ids = Vec::with_capacity(count);
     for repo in repositories {
-        upsert_repository(pool, &repo).await?;
+        let id = upsert_repository(pool, &repo).await?;
+        synced_ids.push(id);
+    }
+
+    // Remove repositories that no longer exist on this forge
+    let deleted = crate::db::delete_stale_repositories(pool, forge_name, &synced_ids).await?;
+    if deleted > 0 {
+        tracing::info!(deleted, "removed stale repositories");
     }
 
     tracing::info!(count, "forge sync complete");
@@ -169,6 +188,47 @@ async fn sync_crates(pool: &PgPool, crates_io: &CratesIoRegistry) -> Result<(), 
     Ok(())
 }
 
+#[tracing::instrument(skip(pool, npm))]
+async fn sync_npm(pool: &PgPool, npm: &NpmRegistry) -> Result<(), SyncError> {
+    tracing::info!("starting npm sync");
+
+    let packages = npm.fetch_packages().await?;
+    let count = packages.len();
+
+    // Batch lookup all repository URLs at once to avoid N+1 queries
+    let repo_urls: Vec<String> = packages
+        .iter()
+        .filter_map(|p| p.repository_url.clone())
+        .collect();
+
+    let repo_map = crate::db::get_repositories_by_urls(pool, &repo_urls).await?;
+
+    for pkg in packages {
+        let repository_id = pkg
+            .repository_url
+            .as_ref()
+            .and_then(|url| repo_map.get(url).copied());
+
+        crate::db::upsert_npm_package(
+            pool,
+            &pkg.name,
+            pkg.scope.as_deref(),
+            pkg.description.as_deref(),
+            repository_id,
+            &pkg.npm_url,
+            pkg.downloads_weekly,
+            pkg.version.as_deref(),
+            &pkg.keywords,
+        )
+        .await?;
+
+        tracing::debug!(name = %pkg.name, "upserted npm package");
+    }
+
+    tracing::info!(count, "npm sync complete");
+    Ok(())
+}
+
 #[tracing::instrument(skip(pool, contributions_sync))]
 async fn sync_contributions(
     pool: &PgPool,
@@ -201,8 +261,11 @@ async fn sync_contributions(
 }
 
 #[tracing::instrument(skip(pool, repo), fields(repo.name = %repo.name, repo.forge = %repo.forge))]
-async fn upsert_repository(pool: &PgPool, repo: &FetchedRepository) -> Result<(), SyncError> {
-    crate::db::upsert_repository(
+async fn upsert_repository(
+    pool: &PgPool,
+    repo: &FetchedRepository,
+) -> Result<uuid::Uuid, SyncError> {
+    let id = crate::db::upsert_repository(
         pool,
         &repo.forge,
         &repo.forge_id,
@@ -217,7 +280,7 @@ async fn upsert_repository(pool: &PgPool, repo: &FetchedRepository) -> Result<()
     .await?;
 
     tracing::debug!("upserted repository");
-    Ok(())
+    Ok(id)
 }
 
 pub fn spawn_sync_task(pool: PgPool, sources: SyncSources, config: SyncConfig) {

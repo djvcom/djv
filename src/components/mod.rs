@@ -1,5 +1,6 @@
 mod contributions_list;
 mod filter_bar;
+mod header;
 mod language_icon;
 mod project_card;
 mod project_grid;
@@ -8,6 +9,7 @@ mod theme_toggle;
 
 pub use contributions_list::{ContributionData, ContributionsEmpty, ContributionsList};
 pub use filter_bar::FilterBar;
+pub use header::Header;
 pub use language_icon::LanguageIcon;
 pub use project_card::ProjectCard;
 pub use project_grid::{ProjectData, ProjectGrid, ProjectGridEmpty};

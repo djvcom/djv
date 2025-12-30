@@ -120,6 +120,8 @@ pub struct ProjectFilters {
     pub language: Option<String>,
     pub topic: Option<String>,
     pub sort: Option<SortOrder>,
+    /// Maximum number of results to return (None = no limit)
+    pub limit: Option<i32>,
 }
 
 /// Sort order for projects

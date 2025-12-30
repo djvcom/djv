@@ -71,6 +71,12 @@ pub struct SyncConfig {
     /// crates.io sync configuration
     pub crates_io: Option<CratesIoConfig>,
 
+    /// npm sync configuration
+    pub npm: Option<NpmConfig>,
+
+    /// GitLab sync configuration
+    pub gitlab: Option<GitLabConfig>,
+
     /// Contributions sync configuration
     pub contributions: Option<ContributionsConfig>,
 }
@@ -90,6 +96,8 @@ impl Default for SyncConfig {
             interval_secs: 3600,
             github: None,
             crates_io: None,
+            npm: None,
+            gitlab: None,
             contributions: None,
         }
     }
@@ -111,6 +119,26 @@ pub struct CratesIoConfig {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct NpmConfig {
+    /// npm username to sync packages from
+    pub user: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct GitLabConfig {
+    /// GitLab username to sync repositories from
+    pub user: String,
+
+    /// GitLab host (defaults to gitlab.com)
+    #[serde(default = "default_gitlab_host")]
+    pub host: String,
+}
+
+fn default_gitlab_host() -> String {
+    "gitlab.com".to_string()
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ContributionsConfig {
     /// GitHub username to track contributions from
     pub user: String,
@@ -129,6 +157,7 @@ impl Config {
     /// - DJV_SYNC_GITHUB_USER
     /// - DJV_SYNC_GITHUB_TOKEN
     /// - DJV_SYNC_CRATES_IO_USER
+    /// - DJV_SYNC_NPM_USER
     /// - DJV_SYNC_CONTRIBUTIONS_USER
     #[allow(clippy::result_large_err)]
     pub fn load() -> Result<Self, figment::Error> {
@@ -168,6 +197,22 @@ impl Config {
         if self.sync.crates_io.is_none() {
             if let Ok(user) = std::env::var("DJV_CRATES_IO_USER") {
                 self.sync.crates_io = Some(CratesIoConfig { user });
+            }
+        }
+
+        // DJV_NPM_USER -> sync.npm.user
+        if self.sync.npm.is_none() {
+            if let Ok(user) = std::env::var("DJV_NPM_USER") {
+                self.sync.npm = Some(NpmConfig { user });
+            }
+        }
+
+        // DJV_GITLAB_USER -> sync.gitlab.user
+        if self.sync.gitlab.is_none() {
+            if let Ok(user) = std::env::var("DJV_GITLAB_USER") {
+                let host =
+                    std::env::var("DJV_GITLAB_HOST").unwrap_or_else(|_| default_gitlab_host());
+                self.sync.gitlab = Some(GitLabConfig { user, host });
             }
         }
 

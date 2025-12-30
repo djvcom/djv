@@ -60,6 +60,24 @@ pub async fn get_repository_by_url(pool: &PgPool, url: &str) -> Result<Option<Uu
     Ok(id)
 }
 
+/// Delete repositories from a forge that are no longer present in the source.
+/// Returns the number of deleted rows.
+pub async fn delete_stale_repositories(
+    pool: &PgPool,
+    forge: &str,
+    synced_ids: &[Uuid],
+) -> Result<u64, sqlx::Error> {
+    let result = sqlx::query!(
+        "DELETE FROM repositories WHERE forge = $1 AND id != ALL($2)",
+        forge,
+        synced_ids,
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(result.rows_affected())
+}
+
 pub async fn get_repositories_by_urls(
     pool: &PgPool,
     urls: &[String],
@@ -296,6 +314,8 @@ pub async fn get_projects(
     let kind_filter = filters.kind.map(|k| k.to_string());
     let language_filter = filters.language.clone();
     let topic_filter = filters.topic.clone();
+    // Use provided limit, or a large number to effectively mean "no limit"
+    let limit = filters.limit.unwrap_or(1000) as i64;
 
     let rows = match filters.sort.unwrap_or_default() {
         SortOrder::Popularity => {
@@ -320,11 +340,12 @@ pub async fn get_projects(
                   AND ($2::TEXT IS NULL OR LOWER(language) = LOWER($2))
                   AND ($3::TEXT IS NULL OR $3 = ANY(topics))
                 ORDER BY popularity DESC NULLS LAST
-                LIMIT 8
+                LIMIT $4
                 "#,
                 kind_filter,
                 language_filter,
                 topic_filter,
+                limit,
             )
             .fetch_all(pool)
             .await?
@@ -351,11 +372,12 @@ pub async fn get_projects(
                   AND ($2::TEXT IS NULL OR LOWER(language) = LOWER($2))
                   AND ($3::TEXT IS NULL OR $3 = ANY(topics))
                 ORDER BY name ASC
-                LIMIT 8
+                LIMIT $4
                 "#,
                 kind_filter,
                 language_filter,
                 topic_filter,
+                limit,
             )
             .fetch_all(pool)
             .await?
@@ -382,11 +404,12 @@ pub async fn get_projects(
                   AND ($2::TEXT IS NULL OR LOWER(language) = LOWER($2))
                   AND ($3::TEXT IS NULL OR $3 = ANY(topics))
                 ORDER BY synced_at DESC
-                LIMIT 8
+                LIMIT $4
                 "#,
                 kind_filter,
                 language_filter,
                 topic_filter,
+                limit,
             )
             .fetch_all(pool)
             .await?

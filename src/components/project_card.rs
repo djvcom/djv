@@ -12,6 +12,16 @@ fn format_number(n: i32) -> String {
     }
 }
 
+fn forge_icon_path(url: &str) -> Option<(&'static str, &'static str)> {
+    if url.contains("gitlab.com") || url.contains("gitlab.") {
+        Some(("/icons/gitlab.svg", "GitLab"))
+    } else if url.contains("github.com") {
+        Some(("/icons/github.svg", "GitHub"))
+    } else {
+        None
+    }
+}
+
 #[component]
 pub fn ProjectCard(
     name: String,
@@ -47,6 +57,11 @@ pub fn ProjectCard(
     .collect();
 
     let lang_for_icon = language.clone();
+    let forge_icon = if lang_for_icon.is_none() {
+        forge_icon_path(&url)
+    } else {
+        None
+    };
 
     view! {
         <li class="project-card">
@@ -55,6 +70,11 @@ pub fn ProjectCard(
                     <h3>{name}</h3>
                     <div class="project-header-meta">
                         {lang_for_icon.map(|l| view! { <LanguageIcon language=l /> })}
+                        {forge_icon.map(|(path, title)| view! {
+                            <span class="language-icon" title=title>
+                                <img src=path alt="" />
+                            </span>
+                        })}
                         {badge.map(|b| view! { <span class="project-badge">{b}</span> })}
                     </div>
                 </div>

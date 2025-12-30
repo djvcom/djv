@@ -21,7 +21,10 @@ pub fn ThemeToggle() -> impl IntoView {
             let cookie_value = next.to_string();
             let document = leptos::prelude::document();
             if let Some(html_doc) = document.dyn_ref::<leptos::web_sys::HtmlDocument>() {
-                let _ = html_doc.set_cookie(&format!("djv-theme={}; path=/; max-age=31536000", cookie_value));
+                let _ = html_doc.set_cookie(&format!(
+                    "djv-theme={}; path=/; max-age=31536000",
+                    cookie_value
+                ));
             }
         }
 
@@ -80,4 +83,3 @@ fn MoonIcon() -> impl IntoView {
         </svg>
     }
 }
-

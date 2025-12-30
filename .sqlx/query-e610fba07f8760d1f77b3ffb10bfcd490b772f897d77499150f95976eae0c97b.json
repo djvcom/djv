@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n                SELECT\n                    id as \"id!\",\n                    kind as \"kind!\",\n                    name as \"name!\",\n                    description,\n                    url as \"url!\",\n                    language,\n                    topics,\n                    popularity,\n                    version,\n                    commit_count,\n                    updated_at,\n                    synced_at as \"synced_at!\"\n                FROM projects\n                WHERE ($1::TEXT IS NULL OR kind = $1)\n                  AND ($2::TEXT IS NULL OR LOWER(language) = LOWER($2))\n                  AND ($3::TEXT IS NULL OR $3 = ANY(topics))\n                ORDER BY synced_at DESC\n                LIMIT 8\n                ",
+  "query": "\n                SELECT\n                    id as \"id!\",\n                    kind as \"kind!\",\n                    name as \"name!\",\n                    description,\n                    url as \"url!\",\n                    language,\n                    topics,\n                    popularity,\n                    version,\n                    commit_count,\n                    updated_at,\n                    synced_at as \"synced_at!\"\n                FROM projects\n                WHERE ($1::TEXT IS NULL OR kind = $1)\n                  AND ($2::TEXT IS NULL OR LOWER(language) = LOWER($2))\n                  AND ($3::TEXT IS NULL OR $3 = ANY(topics))\n                ORDER BY synced_at DESC\n                LIMIT $4\n                ",
   "describe": {
     "columns": [
       {
@@ -68,7 +68,8 @@
       "Left": [
         "Text",
         "Text",
-        "Text"
+        "Text",
+        "Int8"
       ]
     },
     "nullable": [
@@ -86,5 +87,5 @@
       true
     ]
   },
-  "hash": "ccd50a7c6593f93c63fdb731d44d05db48134e4ed32a96981b065e1804a65269"
+  "hash": "e610fba07f8760d1f77b3ffb10bfcd490b772f897d77499150f95976eae0c97b"
 }
