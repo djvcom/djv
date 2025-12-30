@@ -1,11 +1,11 @@
 use leptos::prelude::*;
-use leptos_meta::{provide_meta_context, Html, MetaTags, Stylesheet, Title};
+use leptos_meta::{provide_meta_context, Html, MetaTags, Script, Stylesheet, Title};
 use leptos_router::{
     components::{Route, Router, Routes},
     hooks::use_query_map,
     StaticSegment,
 };
-use leptos_use::{use_color_mode, ColorMode, UseColorModeReturn};
+use leptos_use::ColorMode;
 
 use crate::components::{
     ContributionData, ContributionsEmpty, ContributionsList, FilterBar, ProjectData, ProjectGrid,
@@ -45,12 +45,57 @@ pub struct ThemeContext {
 pub fn App() -> impl IntoView {
     provide_meta_context();
 
-    let UseColorModeReturn { mode, set_mode, .. } = use_color_mode();
+    // Create theme signal - initialized to Light on server, will sync from DOM on client
+    let (mode, set_mode) = signal(ColorMode::Light);
 
-    provide_context(ThemeContext { mode, set_mode });
+    provide_context(ThemeContext {
+        mode: mode.into(),
+        set_mode,
+    });
+
+    // Effect to apply theme class to <html> when mode changes
+    #[allow(unused_variables)]
+    Effect::new(move |prev: Option<bool>| {
+        // Always read the signal to subscribe to changes
+        let current_mode = mode.get();
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            let document = leptos::prelude::document();
+            if let Some(html) = document.document_element() {
+                if prev.is_none() {
+                    // First run: sync signal FROM DOM (what blocking script set)
+                    let class_name = html.class_name();
+                    let initial_mode = if class_name.contains("dark") {
+                        ColorMode::Dark
+                    } else if class_name.contains("auto") {
+                        ColorMode::Auto
+                    } else {
+                        ColorMode::Light
+                    };
+                    // Only update if different from server default
+                    if initial_mode != current_mode {
+                        set_mode.set(initial_mode);
+                    }
+                } else {
+                    // Subsequent runs: apply signal to DOM
+                    let class_name = current_mode.to_string();
+                    let class_list = html.class_list();
+                    let _ = class_list.remove_3("light", "dark", "auto");
+                    let _ = class_list.add_1(&class_name);
+                }
+            }
+        }
+
+        true // Return value for prev
+    });
+
+    // Blocking script: runs before body, sets correct theme class immediately
+    let theme_script = "(function(){var s=document.cookie.match(/(?:^|; )djv-theme=([^;]*)/);var t=s?s[1]:(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.className=t;})();";
 
     view! {
-        <Html {..} class=move || mode.get().to_string()/>
+        <Script>{theme_script}</Script>
+        <Html {..} lang="en"/>
         <Stylesheet id="leptos" href="/pkg/djv.css"/>
         <Title text="Daniel Verrall"/>
 
@@ -86,132 +131,156 @@ pub struct InitialPageData {
     filter.sort = ?filters.sort,
 )))]
 pub async fn fetch_projects(filters: ProjectFilters) -> Result<Vec<ProjectData>, ServerFnError> {
-    use crate::db::{get_projects, ProjectFilters as DbFilters, ProjectKind, SortOrder};
-    use crate::state::AppState;
-    use axum::Extension;
-    use leptos_axum::extract;
+    #[cfg(feature = "ssr")]
+    {
+        use crate::db::{get_projects, ProjectFilters as DbFilters, ProjectKind, SortOrder};
+        use crate::state::AppState;
+        use axum::Extension;
+        use leptos_axum::extract;
 
-    let Extension(app_state): Extension<AppState> = extract().await?;
-    let pool = app_state
-        .pool
-        .as_ref()
-        .ok_or_else(|| ServerFnError::new("Database not available"))?;
+        let Extension(app_state): Extension<AppState> = extract().await?;
+        let pool = app_state
+            .pool
+            .as_ref()
+            .ok_or_else(|| ServerFnError::new("Database not available"))?;
 
-    let db_filters = DbFilters {
-        kind: filters
-            .kind
-            .as_deref()
-            .and_then(|k| k.parse::<ProjectKind>().ok()),
-        language: filters.language,
-        topic: filters.topic,
-        sort: filters
-            .sort
-            .as_deref()
-            .and_then(|s| s.parse::<SortOrder>().ok()),
-    };
+        let db_filters = DbFilters {
+            kind: filters
+                .kind
+                .as_deref()
+                .and_then(|k| k.parse::<ProjectKind>().ok()),
+            language: filters.language,
+            topic: filters.topic,
+            sort: filters
+                .sort
+                .as_deref()
+                .and_then(|s| s.parse::<SortOrder>().ok()),
+        };
 
-    let projects = get_projects(pool, &db_filters)
-        .await
-        .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?;
+        let projects = get_projects(pool, &db_filters)
+            .await
+            .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?;
 
-    Ok(projects
-        .into_iter()
-        .map(|p| ProjectData {
-            id: p.id.to_string(),
-            name: p.name,
-            description: p.description,
-            url: p.url,
-            kind: p.kind.to_string(),
-            language: p.language,
-            popularity: p.popularity,
-            version: p.version,
-            commit_count: p.commit_count,
-            updated_at: p.updated_at.map(|dt| dt.format("%Y-%m-%d").to_string()),
-        })
-        .collect())
+        Ok(projects
+            .into_iter()
+            .map(|p| ProjectData {
+                id: p.id.to_string(),
+                name: p.name,
+                description: p.description,
+                url: p.url,
+                kind: p.kind.to_string(),
+                language: p.language,
+                popularity: p.popularity,
+                version: p.version,
+                commit_count: p.commit_count,
+                updated_at: p.updated_at.map(|dt| dt.format("%Y-%m-%d").to_string()),
+            })
+            .collect())
+    }
+    #[cfg(not(feature = "ssr"))]
+    {
+        let _ = filters;
+        unreachable!()
+    }
 }
 
 #[server(FetchTopics)]
 pub async fn fetch_topics() -> Result<Vec<String>, ServerFnError> {
-    use crate::db::get_distinct_topics;
-    use crate::state::AppState;
-    use axum::Extension;
-    use leptos_axum::extract;
+    #[cfg(feature = "ssr")]
+    {
+        use crate::db::get_distinct_topics;
+        use crate::state::AppState;
+        use axum::Extension;
+        use leptos_axum::extract;
 
-    let Extension(app_state): Extension<AppState> = extract().await?;
-    let pool = app_state
-        .pool
-        .as_ref()
-        .ok_or_else(|| ServerFnError::new("Database not available"))?;
+        let Extension(app_state): Extension<AppState> = extract().await?;
+        let pool = app_state
+            .pool
+            .as_ref()
+            .ok_or_else(|| ServerFnError::new("Database not available"))?;
 
-    let topics = get_distinct_topics(pool)
-        .await
-        .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?;
+        let topics = get_distinct_topics(pool)
+            .await
+            .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?;
 
-    Ok(topics)
+        Ok(topics)
+    }
+    #[cfg(not(feature = "ssr"))]
+    unreachable!()
 }
 
 #[server(FetchContributions)]
 pub async fn fetch_contributions() -> Result<Vec<ContributionData>, ServerFnError> {
-    use crate::db::get_contributions;
-    use crate::state::AppState;
-    use axum::Extension;
-    use leptos_axum::extract;
+    #[cfg(feature = "ssr")]
+    {
+        use crate::db::get_contributions;
+        use crate::state::AppState;
+        use axum::Extension;
+        use leptos_axum::extract;
 
-    let Extension(app_state): Extension<AppState> = extract().await?;
-    let pool = app_state
-        .pool
-        .as_ref()
-        .ok_or_else(|| ServerFnError::new("Database not available"))?;
+        let Extension(app_state): Extension<AppState> = extract().await?;
+        let pool = app_state
+            .pool
+            .as_ref()
+            .ok_or_else(|| ServerFnError::new("Database not available"))?;
 
-    let contributions = get_contributions(pool, 10, 2)
-        .await
-        .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?;
+        let contributions = get_contributions(pool, 10, 2)
+            .await
+            .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?;
 
-    Ok(contributions
-        .into_iter()
-        .map(|c| ContributionData {
-            repo_name: format!("{}/{}", c.repo_owner, c.repo_name),
-            title: c.title.unwrap_or_default(),
-            url: c.url,
-            merged_at: c.merged_at.map(|dt| dt.format("%Y-%m-%d").to_string()),
-        })
-        .collect())
+        Ok(contributions
+            .into_iter()
+            .map(|c| ContributionData {
+                repo_name: format!("{}/{}", c.repo_owner, c.repo_name),
+                title: c.title.unwrap_or_default(),
+                url: c.url,
+                merged_at: c.merged_at.map(|dt| dt.format("%Y-%m-%d").to_string()),
+            })
+            .collect())
+    }
+    #[cfg(not(feature = "ssr"))]
+    unreachable!()
 }
 
 #[server(FetchInitialPageData)]
 pub async fn fetch_initial_page_data() -> Result<InitialPageData, ServerFnError> {
-    use crate::db::{get_contributions, get_distinct_topics};
-    use crate::state::AppState;
-    use axum::Extension;
-    use leptos_axum::extract;
+    #[cfg(feature = "ssr")]
+    {
+        use crate::db::{get_contributions, get_distinct_topics};
+        use crate::state::AppState;
+        use axum::Extension;
+        use leptos_axum::extract;
 
-    let Extension(app_state): Extension<AppState> = extract().await?;
-    let pool = app_state
-        .pool
-        .as_ref()
-        .ok_or_else(|| ServerFnError::new("Database not available"))?;
+        let Extension(app_state): Extension<AppState> = extract().await?;
+        let pool = app_state
+            .pool
+            .as_ref()
+            .ok_or_else(|| ServerFnError::new("Database not available"))?;
 
-    let (topics_result, contributions_result) =
-        tokio::join!(get_distinct_topics(pool), get_contributions(pool, 10, 2));
+        let (topics_result, contributions_result) =
+            tokio::join!(get_distinct_topics(pool), get_contributions(pool, 10, 2));
 
-    let topics = topics_result.map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?;
+        let topics =
+            topics_result.map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?;
 
-    let contributions = contributions_result
-        .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?
-        .into_iter()
-        .map(|c| ContributionData {
-            repo_name: format!("{}/{}", c.repo_owner, c.repo_name),
-            title: c.title.unwrap_or_default(),
-            url: c.url,
-            merged_at: c.merged_at.map(|dt| dt.format("%Y-%m-%d").to_string()),
+        let contributions = contributions_result
+            .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?
+            .into_iter()
+            .map(|c| ContributionData {
+                repo_name: format!("{}/{}", c.repo_owner, c.repo_name),
+                title: c.title.unwrap_or_default(),
+                url: c.url,
+                merged_at: c.merged_at.map(|dt| dt.format("%Y-%m-%d").to_string()),
+            })
+            .collect();
+
+        Ok(InitialPageData {
+            topics,
+            contributions,
         })
-        .collect();
-
-    Ok(InitialPageData {
-        topics,
-        contributions,
-    })
+    }
+    #[cfg(not(feature = "ssr"))]
+    unreachable!()
 }
 
 #[component]
@@ -281,23 +350,37 @@ fn HomePage() -> impl IntoView {
 
             <section class="projects">
                 <h2>"Projects"</h2>
-                {move || {
-                    let f = current_filters.get();
-                    let available_topics = initial_data.get()
-                        .and_then(|r| r.ok())
-                        .map(|d| d.topics)
-                        .unwrap_or_default();
+                <Suspense fallback=move || {
+                    let f = current_filters.get_untracked();
                     view! {
                         <FilterBar
                             kind_filter=f.kind.clone()
                             language_filter=f.language.clone()
                             topic_filter=f.topic.clone()
                             sort_filter=f.sort.clone()
-                            topics=available_topics
+                            topics=vec![]
                             on_filter_change=on_filter_change
                         />
                     }
-                }}
+                }>
+                    {move || {
+                        let f = current_filters.get();
+                        let available_topics = initial_data.get()
+                            .and_then(|r| r.ok())
+                            .map(|d| d.topics)
+                            .unwrap_or_default();
+                        view! {
+                            <FilterBar
+                                kind_filter=f.kind.clone()
+                                language_filter=f.language.clone()
+                                topic_filter=f.topic.clone()
+                                sort_filter=f.sort.clone()
+                                topics=available_topics
+                                on_filter_change=on_filter_change
+                            />
+                        }
+                    }}
+                </Suspense>
                 <Suspense fallback=move || view! { <ProjectsPlaceholder /> }>
                     {move || {
                         projects.get().map(|result| {

@@ -8,18 +8,34 @@ pub fn ThemeToggle() -> impl IntoView {
     let theme = expect_context::<ThemeContext>();
 
     let toggle = move |_| {
-        let next = match theme.mode.get() {
+        let current = theme.mode.get();
+        let next = match current {
             ColorMode::Light => ColorMode::Dark,
             ColorMode::Dark => ColorMode::Auto,
             ColorMode::Auto | ColorMode::Custom(_) => ColorMode::Light,
         };
+
+        // Save to cookie
+        #[cfg(target_arch = "wasm32")]
+        {
+            use leptos::wasm_bindgen::JsCast;
+            let cookie_value = next.to_string();
+            let document = leptos::prelude::document();
+            if let Some(html_doc) = document.dyn_ref::<leptos::web_sys::HtmlDocument>() {
+                let _ = html_doc.set_cookie(&format!("djv-theme={}; path=/; max-age=31536000", cookie_value));
+            }
+        }
+
         theme.set_mode.set(next);
     };
 
-    let icon = move || match theme.mode.get() {
-        ColorMode::Light => "light",
-        ColorMode::Dark => "dark",
-        ColorMode::Auto | ColorMode::Custom(_) => "auto",
+    let mode_class = move || {
+        let current = theme.mode.get();
+        match current {
+            ColorMode::Light => "theme-toggle--light",
+            ColorMode::Dark => "theme-toggle--dark",
+            ColorMode::Auto | ColorMode::Custom(_) => "theme-toggle--auto",
+        }
     };
 
     let label = move || match theme.mode.get() {
@@ -30,18 +46,19 @@ pub fn ThemeToggle() -> impl IntoView {
 
     view! {
         <button
-            class="theme-toggle"
+            class=move || format!("theme-toggle {}", mode_class())
             on:click=toggle
             aria-label=label
             title=label
-            data-theme=icon
         >
-            <span class="theme-toggle__icon" aria-hidden="true">
-                {move || match theme.mode.get() {
-                    ColorMode::Light => view! { <SunIcon /> }.into_any(),
-                    ColorMode::Dark => view! { <MoonIcon /> }.into_any(),
-                    ColorMode::Auto | ColorMode::Custom(_) => view! { <AutoIcon /> }.into_any(),
-                }}
+            <span class="theme-toggle__icon theme-toggle__icon--light" aria-hidden="true">
+                <SunIcon />
+            </span>
+            <span class="theme-toggle__icon theme-toggle__icon--dark" aria-hidden="true">
+                <MoonIcon />
+            </span>
+            <span class="theme-toggle__icon theme-toggle__icon--auto" aria-hidden="true">
+                <AutoIcon />
             </span>
         </button>
     }

@@ -452,7 +452,7 @@ body {
 }
 
 .theme-toggle__icon {
-	display: flex;
+	display: none;
 	align-items: center;
 	justify-content: center;
 
@@ -460,4 +460,11 @@ body {
 		width: 1.25rem;
 		height: 1.25rem;
 	}
+}
+
+// Show the correct icon based on the button's mode class
+.theme-toggle--light .theme-toggle__icon--light,
+.theme-toggle--dark .theme-toggle__icon--dark,
+.theme-toggle--auto .theme-toggle__icon--auto {
+	display: flex;
 }
