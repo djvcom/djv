@@ -27,11 +27,15 @@ pub fn ProjectCard(
     let description_text = description.unwrap_or_default();
     let badge = kind.clone().or(language.clone());
 
-    let metric_label = match kind.as_deref() {
-        Some("crate") | Some("npm") => "downloads",
-        _ => "stars",
+    let metric = if popularity > 0 {
+        let label = match kind.as_deref() {
+            Some("crate") | Some("npm") => "downloads",
+            _ => "stars",
+        };
+        Some((format_number(popularity), label))
+    } else {
+        None
     };
-    let metric_value = format_number(popularity);
 
     let overlay_items: Vec<String> = [
         version.map(|v| format!("v{}", v)),
@@ -56,7 +60,9 @@ pub fn ProjectCard(
                 </div>
                 <p class="project-description">{description_text}</p>
                 <div class="project-meta">
-                    <span class="project-metric">{metric_value}" "{metric_label}</span>
+                    {metric.map(|(value, label)| view! {
+                        <span class="project-metric">{value}" "{label}</span>
+                    })}
                     <span class="project-overlay">
                         {overlay_items.join(" · ")}
                     </span>

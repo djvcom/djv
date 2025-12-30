@@ -143,8 +143,11 @@ pub fn FilterBar(
                     {move || if is_expanded.get() { "hide filters" } else { "filter" }}
                 </button>
             </div>
-            <Show when=move || is_expanded.get()>
-                <div class="filter-groups">
+            <div
+                class="filter-groups"
+                class:filter-groups--expanded=move || is_expanded.get()
+            >
+                <div class="filter-groups-inner">
                     {render_group("kind", kinds.clone())}
                     {render_group("language", languages.clone())}
                     {if show_topics {
@@ -154,7 +157,7 @@ pub fn FilterBar(
                     }}
                     {render_group("sort", sorts.clone())}
                 </div>
-            </Show>
+            </div>
         </div>
     }
 }

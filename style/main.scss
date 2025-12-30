@@ -214,6 +214,18 @@ body {
 		height: 100%;
 		object-fit: contain;
 		filter: grayscale(100%);
+
+		// Invert icons in dark mode for visibility
+		:root.dark &,
+		:root.auto & {
+			@media (prefers-color-scheme: dark) {
+				filter: grayscale(100%) invert(1);
+			}
+		}
+
+		:root.dark & {
+			filter: grayscale(100%) invert(1);
+		}
 	}
 
 	&.clickable {
@@ -299,18 +311,68 @@ body {
 }
 
 .filter-groups {
+	display: grid;
+	grid-template-rows: 0fr;
+	overflow: hidden;
+	margin-top: 0;
+	padding-top: 0;
+	border-top: 1px solid transparent;
+	transition:
+		grid-template-rows var(--duration-comfortable) var(--ease-out),
+		margin-top var(--duration-comfortable) var(--ease-out),
+		padding-top var(--duration-comfortable) var(--ease-out),
+		border-color var(--duration-comfortable) var(--ease-out);
+}
+
+.filter-groups--expanded {
+	grid-template-rows: 1fr;
+	margin-top: var(--space-6);
+	padding-top: var(--space-6);
+	border-top-color: var(--colour-border-subtle);
+}
+
+.filter-groups-inner {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--space-8);
-	margin-top: var(--space-6);
-	padding-top: var(--space-6);
-	border-top: 1px solid var(--colour-border-subtle);
+	min-height: 0;
 }
 
 .filter-group {
 	display: flex;
 	align-items: baseline;
 	gap: var(--space-3);
+	opacity: 0;
+	transform: translateY(-4px);
+	transition:
+		opacity var(--duration-medium) var(--ease-out),
+		transform var(--duration-medium) var(--ease-out);
+
+	.filter-groups--expanded & {
+		opacity: 1;
+		transform: translateY(0);
+		transition-delay: 100ms;
+	}
+}
+
+// Reduced motion: instant toggle
+@media (prefers-reduced-motion: reduce) {
+	.filter-groups {
+		transition: none;
+
+		&:not(.filter-groups--expanded) {
+			display: none;
+		}
+
+		&.filter-groups--expanded {
+			display: grid;
+		}
+	}
+
+	.filter-group {
+		transform: none;
+		transition: opacity var(--duration-fast) ease-out;
+	}
 }
 
 .filter-label {
