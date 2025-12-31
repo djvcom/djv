@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0](https://github.com/djvcom/djv/compare/v0.6.0...v0.7.0) - 2025-12-31
+
+### Added
+
+- *(nix)* add npm and gitlab sync options to NixOS module
+
 ## [0.6.0](https://github.com/djvcom/djv/compare/v0.5.3...v0.6.0) - 2025-12-31
 
 ### Added
