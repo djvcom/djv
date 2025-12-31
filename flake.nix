@@ -270,6 +270,28 @@
                 };
               };
 
+              npm = {
+                user = lib.mkOption {
+                  type = lib.types.nullOr lib.types.str;
+                  default = null;
+                  description = "npm username to sync packages from";
+                };
+              };
+
+              gitlab = {
+                user = lib.mkOption {
+                  type = lib.types.nullOr lib.types.str;
+                  default = null;
+                  description = "GitLab username to sync repositories from";
+                };
+
+                host = lib.mkOption {
+                  type = lib.types.str;
+                  default = "gitlab.com";
+                  description = "GitLab host (defaults to gitlab.com)";
+                };
+              };
+
               contributions = {
                 user = lib.mkOption {
                   type = lib.types.nullOr lib.types.str;
@@ -325,6 +347,13 @@
                 }
                 // lib.optionalAttrs (cfg.sync.cratesIo.user != null) {
                   DJV_CRATES_IO_USER = cfg.sync.cratesIo.user;
+                }
+                // lib.optionalAttrs (cfg.sync.npm.user != null) {
+                  DJV_NPM_USER = cfg.sync.npm.user;
+                }
+                // lib.optionalAttrs (cfg.sync.gitlab.user != null) {
+                  DJV_GITLAB_USER = cfg.sync.gitlab.user;
+                  DJV_GITLAB_HOST = cfg.sync.gitlab.host;
                 }
                 // lib.optionalAttrs (cfg.sync.contributions.user != null) {
                   DJV_CONTRIBUTIONS_USER = cfg.sync.contributions.user;
