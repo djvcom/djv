@@ -16,9 +16,9 @@ test.describe("Smoke Tests", () => {
     await expect(page.locator(".header")).toBeVisible();
     await expect(page.locator(".header__name")).toBeVisible();
 
-    // Projects section exists (either placeholder or loaded list)
+    // Projects section exists (list, placeholder, or empty state)
     await expect(
-      page.locator(".project-list, .projects-placeholder")
+      page.locator(".project-list, .projects-placeholder, .project-empty")
     ).toBeVisible();
   });
 
