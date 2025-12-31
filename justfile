@@ -61,15 +61,3 @@ db-prepare-check:
     @echo "Verifying sqlx query cache is up-to-date..."
     cargo sqlx prepare --check -- --all-targets --all-features
 
-# E2E tests (requires dev server running or will start one)
-e2e:
-    cd end2end && npm test
-
-e2e-ui:
-    cd end2end && npm run test:ui
-
-e2e-headed:
-    cd end2end && npm run test:headed
-
-e2e-report:
-    cd end2end && npm run report

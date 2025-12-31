@@ -62,9 +62,6 @@
               nixfmt-rfc-style
               statix
               deadnix
-
-              # E2E testing
-              playwright-driver.browsers
             ];
 
             RUST_SRC_PATH = "${fenixPkgs.latest.rust-src}/lib/rustlib/src/rust/library";
@@ -73,11 +70,6 @@
               echo "djv dev shell"
               echo "  cargo leptos watch  - start dev server"
               echo "  just check          - run fmt, lint, test"
-              echo "  just e2e            - run e2e tests"
-
-              # Playwright: use nix-provided browsers
-              export PLAYWRIGHT_BROWSERS_PATH="${pkgs.playwright-driver.browsers}"
-              export PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=true
             '';
           };
         }
