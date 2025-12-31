@@ -1,7 +1,6 @@
 use leptos::prelude::*;
-use leptos_use::ColorMode;
 
-use crate::app::ThemeContext;
+use crate::app::{ColorMode, ThemeContext};
 
 #[component]
 pub fn ThemeToggle() -> impl IntoView {
@@ -14,18 +13,19 @@ pub fn ThemeToggle() -> impl IntoView {
             _ => ColorMode::Light,
         };
 
-        // Save to cookie
+        // Save to cookie via JS
         #[cfg(target_arch = "wasm32")]
         {
-            use leptos::wasm_bindgen::JsCast;
-            let cookie_value = next.to_string();
-            let document = leptos::prelude::document();
-            if let Some(html_doc) = document.dyn_ref::<leptos::web_sys::HtmlDocument>() {
-                let _ = html_doc.set_cookie(&format!(
-                    "djv-theme={}; path=/; max-age=31536000",
-                    cookie_value
-                ));
+            use leptos::wasm_bindgen::prelude::wasm_bindgen;
+
+            #[wasm_bindgen(
+                inline_js = "export function set_cookie(value) { document.cookie = 'djv-theme=' + value + '; path=/; max-age=31536000'; }"
+            )]
+            extern "C" {
+                fn set_cookie(value: &str);
             }
+
+            set_cookie(&next.to_string());
         }
 
         theme.set_mode.set(next);

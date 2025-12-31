@@ -5,7 +5,6 @@ use leptos_router::{
     hooks::use_query_map,
     StaticSegment,
 };
-use leptos_use::ColorMode;
 use server_fn::codec::Json;
 
 use crate::components::{
@@ -33,6 +32,22 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
                 <App/>
             </body>
         </html>
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ColorMode {
+    #[default]
+    Light,
+    Dark,
+}
+
+impl std::fmt::Display for ColorMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ColorMode::Light => write!(f, "light"),
+            ColorMode::Dark => write!(f, "dark"),
+        }
     }
 }
 
