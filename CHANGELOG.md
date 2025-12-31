@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0](https://github.com/djvcom/djv/compare/v0.5.3...v0.6.0) - 2025-12-31
+
+### Added
+
+- *(sync)* add npm, GitLab sync and UI improvements ([#26](https://github.com/djvcom/djv/pull/26))
+
 ## [0.5.3](https://github.com/djvcom/djv/compare/v0.5.2...v0.5.3) - 2025-12-26
 
 ### Other
