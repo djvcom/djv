@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM repositories WHERE forge = $1 AND id != ALL($2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "31ed651d4b32922179d01d4cf94b7bba1f039765205d019a9fdc0014b6a9fbd5"
+}

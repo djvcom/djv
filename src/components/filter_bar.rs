@@ -16,6 +16,9 @@ pub fn FilterBar(
     #[prop(optional)] topics: Vec<String>,
     #[prop(into)] on_filter_change: Callback<(String, Option<String>)>,
 ) -> impl IntoView {
+    // Collapsed/expanded state for filter groups
+    let (is_expanded, set_expanded) = signal(false);
+
     let kinds = vec![
         FilterOption {
             value: "".to_string(),
@@ -119,16 +122,42 @@ pub fn FilterBar(
 
     let show_topics = !topic_options.is_empty() && topic_options.len() > 1;
 
+    // Check if any non-default filters are active
+    let has_active_filters = kind_filter.is_some()
+        || language_filter.is_some()
+        || topic_filter.is_some()
+        || sort_filter.as_deref().is_some_and(|s| s != "popularity");
+
     view! {
         <div class="filter-bar">
-            {render_group("kind", kinds)}
-            {render_group("language", languages)}
-            {if show_topics {
-                Some(render_group("topic", topic_options))
-            } else {
-                None
-            }}
-            {render_group("sort", sorts)}
+            <div class="filter-summary">
+                <button
+                    class="filter-toggle"
+                    class:filter-toggle--active=has_active_filters
+                    aria-label="Toggle filters"
+                    aria-expanded=move || is_expanded.get()
+                    on:click=move |_| set_expanded.update(|v| *v = !*v)
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                    </svg>
+                </button>
+            </div>
+            <div
+                class="filter-groups"
+                class:filter-groups--expanded=move || is_expanded.get()
+            >
+                <div class="filter-groups-inner">
+                    {render_group("kind", kinds.clone())}
+                    {render_group("language", languages.clone())}
+                    {if show_topics {
+                        Some(render_group("topic", topic_options.clone()))
+                    } else {
+                        None
+                    }}
+                    {render_group("sort", sorts.clone())}
+                </div>
+            </div>
         </div>
     }
 }

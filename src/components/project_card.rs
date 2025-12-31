@@ -12,6 +12,16 @@ fn format_number(n: i32) -> String {
     }
 }
 
+fn forge_icon_path(url: &str) -> Option<(&'static str, &'static str)> {
+    if url.contains("gitlab.com") || url.contains("gitlab.") {
+        Some(("/icons/gitlab.svg", "GitLab"))
+    } else if url.contains("github.com") {
+        Some(("/icons/github.svg", "GitHub"))
+    } else {
+        None
+    }
+}
+
 #[component]
 pub fn ProjectCard(
     name: String,
@@ -27,11 +37,15 @@ pub fn ProjectCard(
     let description_text = description.unwrap_or_default();
     let badge = kind.clone().or(language.clone());
 
-    let metric_label = match kind.as_deref() {
-        Some("crate") | Some("npm") => "downloads",
-        _ => "stars",
+    let metric = if popularity > 0 {
+        let label = match kind.as_deref() {
+            Some("crate") | Some("npm") => "downloads",
+            _ => "stars",
+        };
+        Some((format_number(popularity), label))
+    } else {
+        None
     };
-    let metric_value = format_number(popularity);
 
     let overlay_items: Vec<String> = [
         version.map(|v| format!("v{}", v)),
@@ -43,6 +57,11 @@ pub fn ProjectCard(
     .collect();
 
     let lang_for_icon = language.clone();
+    let forge_icon = if lang_for_icon.is_none() {
+        forge_icon_path(&url)
+    } else {
+        None
+    };
 
     view! {
         <li class="project-card">
@@ -51,12 +70,19 @@ pub fn ProjectCard(
                     <h3>{name}</h3>
                     <div class="project-header-meta">
                         {lang_for_icon.map(|l| view! { <LanguageIcon language=l /> })}
+                        {forge_icon.map(|(path, title)| view! {
+                            <span class="language-icon" title=title>
+                                <img src=path alt="" />
+                            </span>
+                        })}
                         {badge.map(|b| view! { <span class="project-badge">{b}</span> })}
                     </div>
                 </div>
                 <p class="project-description">{description_text}</p>
                 <div class="project-meta">
-                    <span class="project-metric">{metric_value}" "{metric_label}</span>
+                    {metric.map(|(value, label)| view! {
+                        <span class="project-metric">{value}" "{label}</span>
+                    })}
                     <span class="project-overlay">
                         {overlay_items.join(" · ")}
                     </span>

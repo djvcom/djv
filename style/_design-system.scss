@@ -29,7 +29,7 @@
 	--leading-tight: 1.2;
 	--leading-snug: 1.35;
 	--leading-normal: 1.5;
-	--leading-relaxed: 1.65;
+	--leading-relaxed: 1.7;
 
 	// Letter spacing
 	--tracking-tight: -0.025em;
@@ -58,9 +58,9 @@
 	--colour-header-bg: oklch(22% 0.01 40);
 	--colour-header-text: oklch(92% 0.008 75);
 
-	// Accents
-	--colour-accent: oklch(35% 0.025 50);
-	--colour-accent-hover: oklch(28% 0.03 48);
+	// Accents - more distinct from text (higher chroma, shifted hue)
+	--colour-accent: oklch(38% 0.04 35);
+	--colour-accent-hover: oklch(32% 0.05 35);
 	--colour-accent-sage: oklch(65% 0.035 140);
 
 	// Focus
@@ -105,34 +105,53 @@
 
 // ===== DARK MODE =====
 
-@media (prefers-color-scheme: dark) {
-	:root {
-		// Canvas & surfaces
-		--colour-canvas: oklch(18% 0.01 45);
-		--colour-surface: oklch(22% 0.01 45);
-		--colour-surface-raised: oklch(26% 0.01 45);
+// Dark theme tokens - used by both class and media query
+// Warmer and lighter than before - maintains warmth of light mode
+@mixin dark-theme {
+	// Canvas & surfaces - lighter and warmer (hue 60 instead of 45)
+	--colour-canvas: oklch(22% 0.018 60);
+	--colour-surface: oklch(25% 0.016 60);
+	--colour-surface-raised: oklch(28% 0.014 60);
 
-		// Text hierarchy
-		--colour-text-primary: oklch(92% 0.008 75);
-		--colour-text-secondary: oklch(75% 0.01 70);
-		--colour-text-tertiary: oklch(58% 0.008 65);
+	// Text hierarchy - more chroma for warmth
+	--colour-text-primary: oklch(90% 0.012 65);
+	--colour-text-secondary: oklch(72% 0.014 62);
+	--colour-text-tertiary: oklch(56% 0.012 60);
 
-		// Borders & UI
-		--colour-border-subtle: oklch(30% 0.008 45);
-		--colour-border: oklch(38% 0.01 45);
-		--colour-border-strong: oklch(48% 0.012 50);
+	// Borders & UI - warmer hues
+	--colour-border-subtle: oklch(32% 0.012 58);
+	--colour-border: oklch(40% 0.014 58);
+	--colour-border-strong: oklch(50% 0.016 55);
 
-		// Dark header (inverted from light mode)
-		--colour-header-bg: oklch(14% 0.008 40);
-		--colour-header-text: oklch(88% 0.008 75);
+	// Dark header (inverted from light mode)
+	--colour-header-bg: oklch(18% 0.012 58);
+	--colour-header-text: oklch(88% 0.01 65);
 
-		// Accents (adjusted for dark bg contrast)
-		--colour-accent: oklch(65% 0.03 50);
-		--colour-accent-hover: oklch(72% 0.035 50);
-		--colour-accent-sage: oklch(70% 0.04 140);
+	// Accents - warmer, more chroma
+	--colour-accent: oklch(68% 0.045 55);
+	--colour-accent-hover: oklch(75% 0.05 55);
+	--colour-accent-sage: oklch(70% 0.04 140);
 
-		// Focus
-		--colour-focus: oklch(55% 0.04 140);
+	// Focus
+	--colour-focus: oklch(55% 0.04 140);
+}
+
+// Class-based dark mode (user preference via toggle)
+:root.dark {
+	@include dark-theme;
+}
+
+// Auto mode: follow system preference
+:root.auto {
+	@media (prefers-color-scheme: dark) {
+		@include dark-theme;
+	}
+}
+
+// Fallback: if no class is set, follow system preference
+:root:not(.light):not(.dark):not(.auto) {
+	@media (prefers-color-scheme: dark) {
+		@include dark-theme;
 	}
 }
 

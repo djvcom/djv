@@ -713,6 +713,7 @@ dependencies = [
  "tower",
  "tower-http",
  "tracing",
+ "url",
  "urlencoding",
  "uuid",
  "wasm-bindgen",
