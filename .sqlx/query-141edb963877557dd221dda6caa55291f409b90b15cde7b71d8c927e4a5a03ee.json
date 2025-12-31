@@ -1,0 +1,90 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT\n                    id as \"id!\",\n                    kind as \"kind!\",\n                    name as \"name!\",\n                    description,\n                    url as \"url!\",\n                    language,\n                    topics,\n                    popularity,\n                    version,\n                    commit_count,\n                    updated_at,\n                    synced_at as \"synced_at!\"\n                FROM projects\n                WHERE ($1::TEXT IS NULL OR kind = $1)\n                  AND ($2::TEXT IS NULL OR LOWER(language) = LOWER($2))\n                  AND ($3::TEXT IS NULL OR $3 = ANY(topics))\n                ORDER BY name ASC\n                LIMIT 8\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "kind!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "name!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "url!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "language",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "topics",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 7,
+        "name": "popularity",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "version",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "commit_count",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "synced_at!",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "141edb963877557dd221dda6caa55291f409b90b15cde7b71d8c927e4a5a03ee"
+}
