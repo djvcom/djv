@@ -58,6 +58,7 @@
               sqlx-cli
               just
               rust-analyzer
+              postgresql_18
 
               nixfmt-rfc-style
               statix
@@ -68,7 +69,8 @@
 
             shellHook = ''
               echo "djv dev shell"
-              echo "  cargo leptos watch  - start dev server"
+              echo "  just db-up          - start project-local postgres"
+              echo "  just dev            - start dev server"
               echo "  just check          - run fmt, lint, test"
             '';
           };

@@ -7,9 +7,9 @@ mod project_grid;
 mod projects_placeholder;
 mod theme_toggle;
 
-pub use contributions_list::{ContributionData, ContributionsEmpty, ContributionsList};
+pub use contributions_list::{ContributionData, ContributionsSection};
 pub use filter_bar::FilterBar;
-pub use header::Header;
+pub use header::Masthead;
 pub use language_icon::LanguageIcon;
 pub use project_card::ProjectCard;
 pub use project_grid::{ProjectData, ProjectGrid, ProjectGridEmpty};

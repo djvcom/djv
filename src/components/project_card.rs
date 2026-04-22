@@ -1,7 +1,5 @@
 use leptos::prelude::*;
 
-use super::LanguageIcon;
-
 fn format_number(n: i32) -> String {
     if n >= 1_000_000 {
         format!("{:.1}m", n as f64 / 1_000_000.0)
@@ -12,13 +10,12 @@ fn format_number(n: i32) -> String {
     }
 }
 
-fn forge_icon_path(url: &str) -> Option<(&'static str, &'static str)> {
-    if url.contains("gitlab.com") || url.contains("gitlab.") {
-        Some(("/icons/gitlab.svg", "GitLab"))
-    } else if url.contains("github.com") {
-        Some(("/icons/github.svg", "GitHub"))
-    } else {
-        None
+fn lang_dot_class(language: Option<&str>) -> Option<&'static str> {
+    match language.map(str::to_ascii_lowercase).as_deref() {
+        Some("rust") => Some("lang-dot lang-dot--rust"),
+        Some("typescript") => Some("lang-dot lang-dot--typescript"),
+        Some("nix") => Some("lang-dot lang-dot--nix"),
+        _ => None,
     }
 }
 
@@ -31,61 +28,59 @@ pub fn ProjectCard(
     language: Option<String>,
     popularity: i32,
     version: Option<String>,
-    commit_count: Option<i32>,
+    #[prop(optional)] _commit_count: Option<i32>,
     updated_at: Option<String>,
 ) -> impl IntoView {
-    let description_text = description.unwrap_or_default();
-    let badge = kind.clone().or(language.clone());
+    let dot_class = lang_dot_class(language.as_deref());
+    let language_title = language.clone();
 
     let metric = if popularity > 0 {
-        let label = match kind.as_deref() {
-            Some("crate") | Some("npm") => "downloads",
-            _ => "stars",
+        let (value, unit) = match kind.as_deref() {
+            Some("crate") | Some("npm") => (format_number(popularity), "dl"),
+            _ => (format!("★ {}", format_number(popularity)), ""),
         };
-        Some((format_number(popularity), label))
+        Some((value, unit))
     } else {
         None
     };
 
-    let overlay_items: Vec<String> = [
+    let meta_parts: Vec<String> = [
         version.map(|v| format!("v{}", v)),
-        commit_count.map(|c| format!("{} commits", c)),
-        updated_at.map(|d| format!("updated {}", d)),
+        updated_at,
     ]
     .into_iter()
     .flatten()
     .collect();
+    let meta_text = meta_parts.join("  ·  ");
 
-    let lang_for_icon = language.clone();
-    let forge_icon = if lang_for_icon.is_none() {
-        forge_icon_path(&url)
-    } else {
-        None
-    };
+    let description_el = description.filter(|d| !d.is_empty()).map(|d| {
+        view! { <p class="project-row__desc">{d}</p> }
+    });
 
     view! {
-        <li class="project-card">
-            <a href=url target="_blank" rel="noopener">
-                <div class="project-header">
-                    <h3>{name}</h3>
-                    <div class="project-header-meta">
-                        {lang_for_icon.map(|l| view! { <LanguageIcon language=l /> })}
-                        {forge_icon.map(|(path, title)| view! {
-                            <span class="language-icon" title=title>
-                                <img src=path alt="" />
-                            </span>
+        <li class="project-row">
+            <a href=url target="_blank" rel="noopener noreferrer">
+                <div>
+                    <div class="project-row__head">
+                        <h3 class="project-row__name">{name}</h3>
+                        {dot_class.map(|c| view! {
+                            <span class=c title=language_title.clone().unwrap_or_default()></span>
                         })}
-                        {badge.map(|b| view! { <span class="project-badge">{b}</span> })}
                     </div>
+                    {description_el}
                 </div>
-                <p class="project-description">{description_text}</p>
-                <div class="project-meta">
-                    {metric.map(|(value, label)| view! {
-                        <span class="project-metric">{value}" "{label}</span>
+                <div class="project-row__stats">
+                    {metric.map(|(value, unit)| view! {
+                        <span class="project-row__metric">
+                            {value}
+                            {(!unit.is_empty()).then(|| view! {
+                                <span class="project-row__metric-unit">{unit}</span>
+                            })}
+                        </span>
                     })}
-                    <span class="project-overlay">
-                        {overlay_items.join(" · ")}
-                    </span>
+                    {(!meta_text.is_empty()).then(|| view! {
+                        <span class="project-row__meta">{meta_text}</span>
+                    })}
                 </div>
             </a>
         </li>

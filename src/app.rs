@@ -8,8 +8,8 @@ use leptos_router::{
 use server_fn::codec::Json;
 
 use crate::components::{
-    ContributionData, ContributionsEmpty, ContributionsList, FilterBar, Header, ProjectData,
-    ProjectGrid, ProjectGridEmpty, ProjectsPlaceholder,
+    ContributionData, ContributionsSection, FilterBar, Masthead, ProjectData, ProjectGrid,
+    ProjectGridEmpty, ProjectsPlaceholder,
 };
 
 pub fn shell(options: LeptosOptions) -> impl IntoView {
@@ -106,7 +106,7 @@ pub fn App() -> impl IntoView {
     });
 
     // Blocking script: runs before body, sets correct theme class immediately
-    let theme_script = "(function(){var s=document.cookie.match(/(?:^|; )djv-theme=([^;]*)/);var t=s?s[1]:(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.className=t;})();";
+    let theme_script = "(function(){var s=document.cookie.match(/(?:^|; )djv-theme=([^;]*)/);var t=s?s[1]:'light';document.documentElement.className=t;})();";
 
     view! {
         <Script>{theme_script}</Script>
@@ -312,7 +312,7 @@ fn HomePage() -> impl IntoView {
             language: q.get("language").map(|s| s.to_string()),
             topic: q.get("topic").map(|s| s.to_string()),
             sort: q.get("sort").map(|s| s.to_string()),
-            limit: Some(8), // Featured projects on homepage
+            limit: None,
         }
     });
 
@@ -323,13 +323,9 @@ fn HomePage() -> impl IntoView {
     let initial_data = Resource::new(|| (), |_| async move { fetch_initial_page_data().await });
 
     let navigate = leptos_router::hooks::use_navigate();
-
     let on_filter_change = Callback::new(move |(name, value): (String, Option<String>)| {
         let current = query.get();
-
         let mut params: Vec<(String, String)> = vec![];
-
-        // Keep existing params, updating or removing the changed one
         for key in ["kind", "language", "topic", "sort"] {
             if let Some(v) = current.get(key) {
                 if name != key {
@@ -337,65 +333,66 @@ fn HomePage() -> impl IntoView {
                 }
             }
         }
-
-        // Add the new value if present
         if let Some(v) = value {
             params.push((name, v));
         }
-
         let query_string = params
             .into_iter()
             .map(|(k, v)| format!("{}={}", k, v))
             .collect::<Vec<_>>()
             .join("&");
-
         let url = if query_string.is_empty() {
             "/".to_string()
         } else {
             format!("/?{}", query_string)
         };
-
         navigate(&url, Default::default());
     });
-
     let current_filters = filters;
+    let (filter_open, set_filter_open) = signal(false);
 
     view! {
-        <div class="container">
-            <Header is_home=true />
-
-            <section class="projects">
-                <Suspense fallback=move || {
-                    let f = current_filters.get_untracked();
-                    view! {
-                        <FilterBar
-                            kind_filter=f.kind.clone()
-                            language_filter=f.language.clone()
-                            topic_filter=f.topic.clone()
-                            sort_filter=f.sort.clone()
-                            topics=vec![]
-                            on_filter_change=on_filter_change
-                        />
-                    }
-                }>
-                    {move || {
-                        let f = current_filters.get();
-                        let available_topics = initial_data.get()
-                            .and_then(|r| r.ok())
-                            .map(|d| d.topics)
-                            .unwrap_or_default();
+        <div class="shell">
+            <Masthead />
+            <main class="main">
+                <div class="main__filter-row">
+                    <Suspense fallback=move || {
+                        let f = current_filters.get_untracked();
                         view! {
                             <FilterBar
                                 kind_filter=f.kind.clone()
                                 language_filter=f.language.clone()
                                 topic_filter=f.topic.clone()
                                 sort_filter=f.sort.clone()
-                                topics=available_topics
+                                topics=vec![]
                                 on_filter_change=on_filter_change
+                                is_expanded=filter_open
+                                set_expanded=set_filter_open
                             />
                         }
-                    }}
-                </Suspense>
+                    }>
+                        {move || {
+                            let f = current_filters.get();
+                            let available_topics = initial_data.get()
+                                .and_then(|r| r.ok())
+                                .map(|d| d.topics)
+                                .unwrap_or_default();
+                            view! {
+                                <FilterBar
+                                    kind_filter=f.kind.clone()
+                                    language_filter=f.language.clone()
+                                    topic_filter=f.topic.clone()
+                                    sort_filter=f.sort.clone()
+                                    topics=available_topics
+                                    on_filter_change=on_filter_change
+                                    is_expanded=filter_open
+                                    set_expanded=set_filter_open
+                                />
+                            }
+                        }}
+                    </Suspense>
+                </div>
+
                 <Suspense fallback=move || view! { <ProjectsPlaceholder /> }>
                     {move || {
                         projects.get().map(|result| {
@@ -409,23 +406,20 @@ fn HomePage() -> impl IntoView {
                         })
                     }}
                 </Suspense>
-            </section>
 
-            <section class="contributions">
-                <h2>"Contributions"</h2>
-                <Suspense fallback=move || view! { <ContributionsEmpty /> }>
+                <Suspense fallback=|| ()>
                     {move || {
-                        initial_data.get().map(|result| {
-                            match result {
-                                Ok(data) if !data.contributions.is_empty() => {
-                                    view! { <ContributionsList contributions=data.contributions /> }.into_any()
-                                }
-                                _ => view! { <ContributionsEmpty /> }.into_any(),
-                            }
+                        initial_data.get().map(|result| match result {
+                            Ok(data) => view! {
+                                <ContributionsSection contributions=data.contributions />
+                            }.into_any(),
+                            Err(_) => view! {
+                                <ContributionsSection contributions=vec![] />
+                            }.into_any(),
                         })
                     }}
                 </Suspense>
-            </section>
+            </main>
         </div>
     }
 }
@@ -441,7 +435,7 @@ fn ProjectsPage() -> impl IntoView {
             language: q.get("language").map(|s| s.to_string()),
             topic: q.get("topic").map(|s| s.to_string()),
             sort: q.get("sort").map(|s| s.to_string()),
-            limit: None, // Show all projects
+            limit: None,
         }
     });
 
@@ -452,12 +446,9 @@ fn ProjectsPage() -> impl IntoView {
     let topics = Resource::new(|| (), |_| async move { fetch_topics().await });
 
     let navigate = leptos_router::hooks::use_navigate();
-
     let on_filter_change = Callback::new(move |(name, value): (String, Option<String>)| {
         let current = query.get();
-
         let mut params: Vec<(String, String)> = vec![];
-
         for key in ["kind", "language", "topic", "sort"] {
             if let Some(v) = current.get(key) {
                 if name != key {
@@ -465,63 +456,65 @@ fn ProjectsPage() -> impl IntoView {
                 }
             }
         }
-
         if let Some(v) = value {
             params.push((name, v));
         }
-
         let query_string = params
             .into_iter()
             .map(|(k, v)| format!("{}={}", k, v))
             .collect::<Vec<_>>()
             .join("&");
-
         let url = if query_string.is_empty() {
             "/projects".to_string()
         } else {
             format!("/projects?{}", query_string)
         };
-
         navigate(&url, Default::default());
     });
-
     let current_filters = filters;
+    let (filter_open, set_filter_open) = signal(false);
 
     view! {
-        <div class="container">
-            <Header />
-
-            <section class="projects">
-                <Suspense fallback=move || {
-                    let f = current_filters.get_untracked();
-                    view! {
-                        <FilterBar
-                            kind_filter=f.kind.clone()
-                            language_filter=f.language.clone()
-                            topic_filter=f.topic.clone()
-                            sort_filter=f.sort.clone()
-                            topics=vec![]
-                            on_filter_change=on_filter_change
-                        />
-                    }
-                }>
-                    {move || {
-                        let f = current_filters.get();
-                        let available_topics = topics.get()
-                            .and_then(|r| r.ok())
-                            .unwrap_or_default();
+        <div class="shell">
+            <Masthead />
+            <main class="main">
+                <div class="main__filter-row">
+                    <Suspense fallback=move || {
+                        let f = current_filters.get_untracked();
                         view! {
                             <FilterBar
                                 kind_filter=f.kind.clone()
                                 language_filter=f.language.clone()
                                 topic_filter=f.topic.clone()
                                 sort_filter=f.sort.clone()
-                                topics=available_topics
+                                topics=vec![]
                                 on_filter_change=on_filter_change
+                                is_expanded=filter_open
+                                set_expanded=set_filter_open
                             />
                         }
-                    }}
-                </Suspense>
+                    }>
+                        {move || {
+                            let f = current_filters.get();
+                            let available_topics = topics.get()
+                                .and_then(|r| r.ok())
+                                .unwrap_or_default();
+                            view! {
+                                <FilterBar
+                                    kind_filter=f.kind.clone()
+                                    language_filter=f.language.clone()
+                                    topic_filter=f.topic.clone()
+                                    sort_filter=f.sort.clone()
+                                    topics=available_topics
+                                    on_filter_change=on_filter_change
+                                    is_expanded=filter_open
+                                    set_expanded=set_filter_open
+                                />
+                            }
+                        }}
+                    </Suspense>
+                </div>
+
                 <Suspense fallback=move || view! { <ProjectsPlaceholder /> }>
                     {move || {
                         projects.get().map(|result| {
@@ -535,7 +528,8 @@ fn ProjectsPage() -> impl IntoView {
                         })
                     }}
                 </Suspense>
-            </section>
+            </main>
         </div>
     }
 }
+

@@ -11,3 +11,9 @@ target/
 
 # MSVC Windows builds of rustc generate these, which store debugging information
 *.pdb
+
+# Project-local PostgreSQL cluster (managed via `just db-up`)
+.pgdata/
+
+# direnv cache
+.direnv/

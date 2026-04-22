@@ -1,173 +1,100 @@
 // _design-system.scss
-// Gallery aesthetic design system - inspired by Atelier Ellis
-// Reusable across projects
+// Warm, neutral, editorial palette for the R1 Masthead + Rail layout.
 
 :root {
-	// ===== TYPOGRAPHY =====
+	// ===== FONTS =====
+	--font-serif: "Libre Baskerville", Georgia, ui-serif, serif;
+	--font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+	--font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-	// Font families
-	--font-serif: 'Libre Baskerville', Georgia, ui-serif, serif;
-	--font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-	--font-mono: 'JetBrains Mono', ui-monospace, monospace;
+	// Legacy aliases used by older selectors; kept so unported styles still resolve.
+	--serif: var(--font-serif);
+	--sans: var(--font-sans);
+	--mono: var(--font-mono);
 
-	// Type scale (fluid)
-	--text-display: clamp(2.5rem, 5vw, 3.5rem);       // 40-56px - Hero/Logo
-	--text-h1: clamp(2rem, 4vw, 2.625rem);            // 32-42px - Page titles
-	--text-h2: clamp(1.5rem, 3vw, 2rem);              // 24-32px - Sections
-	--text-h3: clamp(1.25rem, 2.5vw, 1.5rem);         // 20-24px - Subsections
-	--text-body: clamp(1rem, 1.5vw, 1.125rem);        // 16-18px - Body
-	--text-small: clamp(0.875rem, 1.25vw, 0.9375rem); // 14-15px - Captions
-	--text-xs: clamp(0.75rem, 1vw, 0.8125rem);        // 12-13px - Labels
+	// ===== COLOURS (light) =====
+	--cream: #F4EEE4;
+	--cream-2: #EDE4D3;
+	--ink: #1C1A17;
+	--ink-soft: #2E2A25;
+	--pencil: #6B635A;
+	--pencil-2: #8C8478;
+	--rule: #DDD3C2;
+	--rule-soft: #E8DFCF;
+	--terracotta: oklch(0.58 0.12 45);
+	--terracotta-soft: oklch(0.72 0.08 45);
+	--terracotta-wash: oklch(0.92 0.03 45);
 
-	// Font weights
-	--weight-light: 300;
+	// Paint-chart swatches
+	--swatch-bone:  oklch(0.92 0.02 80);
+	--swatch-clay:  oklch(0.84 0.04 60);
+	--swatch-ochre: oklch(0.72 0.07 48);
+	--swatch-rust:  oklch(0.58 0.09 40);
+	--swatch-umber: oklch(0.44 0.06 32);
+	--swatch-ink:   oklch(0.28 0.03 28);
+
+	// ===== TYPOGRAPHY SCALE =====
+	--text-name:        clamp(2.4rem, 5.6vw, 3.25rem);  // Daniel Verrall
+	--text-section:     clamp(1.25rem, 2.6vw, 1.75rem); // crates / npm packages
+	--text-project:     clamp(0.95rem, 1.6vw, 1.0625rem);
+	--text-body:        0.8125rem;                       // 13px — descriptions
+	--text-metric:      0.875rem;                        // 14px — download counts
+	--text-meta:        0.625rem;                        // 10px — version, dates
+	--text-smallcaps:   0.6875rem;                       // 11px — labels
+	--text-rail:        0.6875rem;                       // 11px — vertical rail
+
+	// ===== WEIGHTS =====
 	--weight-regular: 400;
 	--weight-medium: 500;
 	--weight-semibold: 600;
 
-	// Line heights
-	--leading-tight: 1.2;
-	--leading-snug: 1.35;
-	--leading-normal: 1.5;
-	--leading-relaxed: 1.7;
-
-	// Letter spacing
-	--tracking-tight: -0.025em;
-	--tracking-normal: 0;
-	--tracking-wide: 0.05em;
-	--tracking-wider: 0.1em;
-
-	// ===== COLOURS (OKLCH) =====
-
-	// Canvas & surfaces
-	--colour-canvas: oklch(96% 0.015 75);
-	--colour-surface: oklch(92% 0.012 75);
-	--colour-surface-raised: oklch(97.5% 0.01 75);
-
-	// Text hierarchy
-	--colour-text-primary: oklch(25% 0.012 45);
-	--colour-text-secondary: oklch(45% 0.01 55);
-	--colour-text-tertiary: oklch(60% 0.008 65);
-
-	// Borders & UI
-	--colour-border-subtle: oklch(82% 0.01 70);
-	--colour-border: oklch(75% 0.012 70);
-	--colour-border-strong: oklch(55% 0.015 60);
-
-	// Dark header (optional)
-	--colour-header-bg: oklch(22% 0.01 40);
-	--colour-header-text: oklch(92% 0.008 75);
-
-	// Accents - more distinct from text (higher chroma, shifted hue)
-	--colour-accent: oklch(38% 0.04 35);
-	--colour-accent-hover: oklch(32% 0.05 35);
-	--colour-accent-sage: oklch(65% 0.035 140);
-
-	// Focus
-	--colour-focus: oklch(40% 0.035 140);
-
 	// ===== SPACING =====
-
-	--space-0: 0;
-	--space-1: 0.25rem;   // 4px
-	--space-2: 0.5rem;    // 8px
-	--space-3: 0.75rem;   // 12px
-	--space-4: 1rem;      // 16px
-	--space-6: 1.5rem;    // 24px
-	--space-8: 2rem;      // 32px
-	--space-12: 3rem;     // 48px
-	--space-16: 4rem;     // 64px
-	--space-24: 6rem;     // 96px
-	--space-32: 8rem;     // 128px
-	--space-40: 10rem;    // 160px
-
-	// Fluid gutters
-	--gutter-desktop: 4vw;
-	--gutter-mobile: 6vw;
-
-	// Container
-	--container-max: 45rem;
-	--container-wide: 75rem;
+	--space-1: 0.25rem;
+	--space-2: 0.5rem;
+	--space-3: 0.75rem;
+	--space-4: 1rem;
+	--space-6: 1.5rem;
+	--space-8: 2rem;
+	--space-12: 3rem;
+	--space-16: 4rem;
 
 	// ===== MOTION =====
-
-	--duration-instant: 100ms;
-	--duration-fast: 200ms;
+	--duration-fast: 150ms;
 	--duration-medium: 250ms;
-	--duration-comfortable: 400ms;
-	--duration-deliberate: 500ms;
-	--duration-slow: 650ms;
-
 	--ease-out: cubic-bezier(0.33, 1, 0.68, 1);
-	--ease-in: cubic-bezier(0.32, 0, 0.67, 0);
-	--ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+	// ===== FOCUS =====
+	--colour-focus: var(--terracotta);
 }
 
 // ===== DARK MODE =====
-
-// Dark theme tokens - used by both class and media query
-// Warmer and lighter than before - maintains warmth of light mode
 @mixin dark-theme {
-	// Canvas & surfaces - lighter and warmer (hue 60 instead of 45)
-	--colour-canvas: oklch(22% 0.018 60);
-	--colour-surface: oklch(25% 0.016 60);
-	--colour-surface-raised: oklch(28% 0.014 60);
-
-	// Text hierarchy - more chroma for warmth
-	--colour-text-primary: oklch(90% 0.012 65);
-	--colour-text-secondary: oklch(72% 0.014 62);
-	--colour-text-tertiary: oklch(56% 0.012 60);
-
-	// Borders & UI - warmer hues
-	--colour-border-subtle: oklch(32% 0.012 58);
-	--colour-border: oklch(40% 0.014 58);
-	--colour-border-strong: oklch(50% 0.016 55);
-
-	// Dark header (inverted from light mode)
-	--colour-header-bg: oklch(18% 0.012 58);
-	--colour-header-text: oklch(88% 0.01 65);
-
-	// Accents - warmer, more chroma
-	--colour-accent: oklch(68% 0.045 55);
-	--colour-accent-hover: oklch(75% 0.05 55);
-	--colour-accent-sage: oklch(70% 0.04 140);
-
-	// Focus
-	--colour-focus: oklch(55% 0.04 140);
+	--cream: #17140F;
+	--cream-2: #1E1A14;
+	--ink: #ECE4D6;
+	--ink-soft: #D4CCBE;
+	--pencil: #8E8676;
+	--pencil-2: #6C6556;
+	--rule: #2B2620;
+	--rule-soft: #231F19;
+	--terracotta: oklch(0.72 0.1 45);
+	--terracotta-soft: oklch(0.62 0.1 45);
+	--terracotta-wash: oklch(0.22 0.04 45);
 }
 
-// Class-based dark mode (user preference via toggle)
-:root.dark {
-	@include dark-theme;
-}
-
-// Auto mode: follow system preference
+:root.dark { @include dark-theme; }
 :root.auto {
-	@media (prefers-color-scheme: dark) {
-		@include dark-theme;
-	}
-}
-
-// Fallback: if no class is set, follow system preference
-:root:not(.light):not(.dark):not(.auto) {
-	@media (prefers-color-scheme: dark) {
-		@include dark-theme;
-	}
+	@media (prefers-color-scheme: dark) { @include dark-theme; }
 }
 
 // ===== ACCESSIBILITY =====
-
-// Focus states
 :focus-visible {
 	outline: 2px solid var(--colour-focus);
-	outline-offset: 4px;
+	outline-offset: 3px;
 }
 
-// Reduced motion
 @media (prefers-reduced-motion: reduce) {
-	*,
-	*::before,
-	*::after {
+	*, *::before, *::after {
 		animation-duration: 0.01ms !important;
 		animation-iteration-count: 1 !important;
 		transition-duration: 0.01ms !important;

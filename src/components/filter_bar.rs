@@ -15,13 +15,13 @@ pub fn FilterBar(
     sort_filter: Option<String>,
     #[prop(optional)] topics: Vec<String>,
     #[prop(into)] on_filter_change: Callback<(String, Option<String>)>,
+    is_expanded: ReadSignal<bool>,
+    set_expanded: WriteSignal<bool>,
 ) -> impl IntoView {
-    // Collapsed/expanded state for filter groups
-    let (is_expanded, set_expanded) = signal(false);
 
     let kinds = vec![
         FilterOption {
-            value: "".to_string(),
+            value: String::new(),
             label: "all".to_string(),
             active: kind_filter.is_none(),
         },
@@ -39,7 +39,7 @@ pub fn FilterBar(
 
     let languages = vec![
         FilterOption {
-            value: "".to_string(),
+            value: String::new(),
             label: "any".to_string(),
             active: language_filter.is_none(),
         },
@@ -61,7 +61,7 @@ pub fn FilterBar(
     ];
 
     let topic_options: Vec<FilterOption> = std::iter::once(FilterOption {
-        value: "".to_string(),
+        value: String::new(),
         label: "any".to_string(),
         active: topic_filter.is_none(),
     })
@@ -94,14 +94,18 @@ pub fn FilterBar(
     let render_group = move |name: &'static str, options: Vec<FilterOption>| {
         view! {
             <div class="filter-group">
-                <span class="filter-label">{name}</span>
-                <div class="filter-options">
+                <span class="filter-group__label">{name}</span>
+                <div class="filter-group__options">
                     {options
                         .into_iter()
                         .map(|opt| {
                             let filter_name = name.to_string();
                             let value = opt.value.clone();
-                            let class = if opt.active { "filter-btn active" } else { "filter-btn" };
+                            let class = if opt.active {
+                                "filter-btn filter-btn--active"
+                            } else {
+                                "filter-btn"
+                            };
                             view! {
                                 <button
                                     class=class
@@ -120,9 +124,8 @@ pub fn FilterBar(
         }
     };
 
-    let show_topics = !topic_options.is_empty() && topic_options.len() > 1;
+    let show_topics = topic_options.len() > 1;
 
-    // Check if any non-default filters are active
     let has_active_filters = kind_filter.is_some()
         || language_filter.is_some()
         || topic_filter.is_some()
@@ -130,32 +133,38 @@ pub fn FilterBar(
 
     view! {
         <div class="filter-bar">
-            <div class="filter-summary">
-                <button
-                    class="filter-toggle"
-                    class:filter-toggle--active=has_active_filters
-                    aria-label="Toggle filters"
-                    aria-expanded=move || is_expanded.get()
-                    on:click=move |_| set_expanded.update(|v| *v = !*v)
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-                    </svg>
-                </button>
-            </div>
-            <div
-                class="filter-groups"
-                class:filter-groups--expanded=move || is_expanded.get()
+            <button
+                class=move || {
+                    let mut c = String::from("filter-bar__summary");
+                    if has_active_filters {
+                        c.push_str(" filter-bar__summary--active");
+                    }
+                    c
+                }
+                aria-label="Toggle filters"
+                aria-expanded=move || is_expanded.get().to_string()
+                on:click=move |_| set_expanded.update(|v| *v = !*v)
             >
-                <div class="filter-groups-inner">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+                <span>"filters"</span>
+            </button>
+
+            <div
+                class=move || {
+                    let mut c = String::from("filter-bar__panel");
+                    if is_expanded.get() {
+                        c.push_str(" filter-bar__panel--open");
+                    }
+                    c
+                }
+            >
+                <div class="filter-bar__panel-inner">
                     {render_group("kind", kinds.clone())}
                     {render_group("language", languages.clone())}
-                    {if show_topics {
-                        Some(render_group("topic", topic_options.clone()))
-                    } else {
-                        None
-                    }}
                     {render_group("sort", sorts.clone())}
+                    {show_topics.then(|| render_group("topic", topic_options.clone()))}
                 </div>
             </div>
         </div>

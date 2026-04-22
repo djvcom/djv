@@ -11,6 +11,8 @@ nix develop
 just dev
 ```
 
+PostgreSQL runs as a project-local cluster under `.pgdata/` (auto-initialised on first use). `just dev` and `just test` start it as needed; `just db-up` / `db-down` / `db-status` / `db-psql [db]` manage it manually.
+
 For remote development, tunnel ports 3000 (app) and 3001 (hot-reload):
 
 ```bash
