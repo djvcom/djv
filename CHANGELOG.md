@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.5](https://github.com/djvcom/djv/compare/v0.7.4...v0.7.5) - 2026-04-24
+
+### Other
+
+- cache cargo output in CI to undo the nix-develop slowdown
+- route Rust CI jobs through the flake's toolchain
+- tighten clippy lints and strip pointless commentary
+
 ## [0.7.4](https://github.com/djvcom/djv/compare/v0.7.3...v0.7.4) - 2026-04-24
 
 ### Other
