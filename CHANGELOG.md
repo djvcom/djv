@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.4](https://github.com/djvcom/djv/compare/v0.7.3...v0.7.4) - 2026-04-24
+
+### Other
+
+- nix build was proving a bit tedious, so only runs prior to updating stable now (when doing a release), and also fixed hover text colour for filter pills as the hover colour was the same as the selected colour, making it invisible
+
 ## [0.7.3](https://github.com/djvcom/djv/compare/v0.7.2...v0.7.3) - 2026-04-24
 
 ### Other
