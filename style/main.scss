@@ -527,6 +527,12 @@ ul, ol { list-style: none; }
 		background: var(--ink);
 		border-color: var(--ink);
 	}
+
+	&--active:hover {
+		color: var(--cream);
+		background: var(--ink-soft);
+		border-color: var(--ink-soft);
+	}
 }
 
 // ===== THEME TOGGLE =====

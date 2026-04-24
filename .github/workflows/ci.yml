@@ -101,6 +101,9 @@ jobs:
   nix-build:
     name: Nix build
     runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'pull_request' && startsWith(github.event.pull_request.title, 'chore: release')) ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'chore: release'))
     steps:
       - uses: actions/checkout@v6
       - uses: DeterminateSystems/nix-installer-action@v21
