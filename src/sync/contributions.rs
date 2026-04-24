@@ -147,8 +147,7 @@ impl ContributionsSync {
             {
                 let now = std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
-                    .map(|d| d.as_secs())
-                    .unwrap_or(0);
+                    .map_or(0, |d| d.as_secs());
                 let retry_after = reset.saturating_sub(now);
                 return Err(SyncError::RateLimited(retry_after));
             }

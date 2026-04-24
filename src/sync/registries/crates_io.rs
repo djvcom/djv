@@ -66,7 +66,7 @@ impl CratesIoRegistry {
 
         loop {
             let url =
-                format!("{CRATES_IO_API_BASE}/crates?user_id={user_id}&page={page}&per_page=100",);
+                format!("{CRATES_IO_API_BASE}/crates?user_id={user_id}&page={page}&per_page=100");
 
             let response: CratesResponse = self
                 .client

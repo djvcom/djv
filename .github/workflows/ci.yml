@@ -15,10 +15,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: DeterminateSystems/nix-installer-action@v21
+      - uses: DeterminateSystems/magic-nix-cache-action@v13
         with:
-          components: rustfmt
-      - run: cargo fmt --check
+          use-flakehub: false
+      - run: nix develop --command cargo fmt --check
 
   rust-clippy:
     name: Rust clippy
@@ -27,12 +28,11 @@ jobs:
       SQLX_OFFLINE: true
     steps:
       - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: DeterminateSystems/nix-installer-action@v21
+      - uses: DeterminateSystems/magic-nix-cache-action@v13
         with:
-          components: clippy
-          targets: wasm32-unknown-unknown
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo clippy --all-features -- -D warnings
+          use-flakehub: false
+      - run: nix develop --command cargo clippy --all-features -- -D warnings
 
   rust-test:
     name: Rust test
@@ -55,25 +55,24 @@ jobs:
       DATABASE_URL: postgres://postgres:test@localhost/djv_test
     steps:
       - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: DeterminateSystems/nix-installer-action@v21
+      - uses: DeterminateSystems/magic-nix-cache-action@v13
         with:
-          targets: wasm32-unknown-unknown
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo test --features ssr
+          use-flakehub: false
+      - run: nix develop --command cargo test --features ssr
 
   sqlx-check:
     name: sqlx cache check
     runs-on: ubuntu-latest
+    env:
+      SQLX_OFFLINE: true
     steps:
       - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: DeterminateSystems/nix-installer-action@v21
+      - uses: DeterminateSystems/magic-nix-cache-action@v13
         with:
-          targets: wasm32-unknown-unknown
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo install sqlx-cli --no-default-features --features postgres
-      - run: cargo sqlx prepare --check -- --all-targets --all-features
-        env:
-          SQLX_OFFLINE: true
+          use-flakehub: false
+      - run: nix develop --command cargo sqlx prepare --check -- --all-targets --all-features
 
   nix-fmt:
     name: Nix format

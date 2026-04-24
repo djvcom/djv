@@ -64,9 +64,7 @@ impl Default for SyncConfig {
 impl SyncConfig {
     #[must_use]
     pub fn from_env() -> Self {
-        let enabled = std::env::var("DJV_SYNC_ENABLED")
-            .map(|v| v == "true" || v == "1")
-            .unwrap_or(true);
+        let enabled = std::env::var("DJV_SYNC_ENABLED").map_or(true, |v| v == "true" || v == "1");
 
         let interval_secs = std::env::var("DJV_SYNC_INTERVAL")
             .ok()
