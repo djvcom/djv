@@ -3,15 +3,53 @@ use leptos_meta::{provide_meta_context, Html, MetaTags, Script, Stylesheet, Titl
 use leptos_router::{
     components::{Route, Router, Routes},
     hooks::use_query_map,
-    StaticSegment,
+    params::ParamsMap,
+    NavigateOptions, StaticSegment,
 };
 use server_fn::codec::Json;
+
+const FILTER_KEYS: [&str; 4] = ["kind", "language", "topic", "sort"];
+
+fn query_to_filters(q: &ParamsMap) -> ProjectFilters {
+    ProjectFilters {
+        kind: q.get("kind"),
+        language: q.get("language"),
+        topic: q.get("topic"),
+        sort: q.get("sort"),
+        limit: None,
+    }
+}
+
+fn filter_url(current: &ParamsMap, name: &str, value: Option<String>, base: &str) -> String {
+    let mut params: Vec<(String, String)> = Vec::new();
+    for key in FILTER_KEYS {
+        if key != name {
+            if let Some(v) = current.get(key) {
+                params.push((key.to_owned(), v));
+            }
+        }
+    }
+    if let Some(v) = value {
+        params.push((name.to_owned(), v));
+    }
+    let query_string = params
+        .into_iter()
+        .map(|(k, v)| format!("{k}={v}"))
+        .collect::<Vec<_>>()
+        .join("&");
+    if query_string.is_empty() {
+        base.to_owned()
+    } else {
+        format!("{base}?{query_string}")
+    }
+}
 
 use crate::components::{
     ContributionData, ContributionsSection, FilterBar, Masthead, ProjectData, ProjectGrid,
     ProjectGridEmpty, ProjectsPlaceholder,
 };
 
+#[must_use]
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
         <!DOCTYPE html>
@@ -29,7 +67,7 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
                 <MetaTags/>
             </head>
             <body>
-                <App/>
+                {app()}
             </body>
         </html>
     }
@@ -57,11 +95,10 @@ pub struct ThemeContext {
     pub set_mode: WriteSignal<ColorMode>,
 }
 
-#[component]
-pub fn App() -> impl IntoView {
+#[must_use]
+pub fn app() -> impl IntoView {
     provide_meta_context();
 
-    // Create theme signal - initialized to Light on server, will sync from DOM on client
     let (mode, set_mode) = signal(ColorMode::Light);
 
     provide_context(ThemeContext {
@@ -69,10 +106,9 @@ pub fn App() -> impl IntoView {
         set_mode,
     });
 
-    // Effect to apply theme class to <html> when mode changes
     #[allow(unused_variables)]
     Effect::new(move |prev: Option<bool>| {
-        // Always read the signal to subscribe to changes
+        // Always read the signal to subscribe to changes.
         let current_mode = mode.get();
 
         #[cfg(target_arch = "wasm32")]
@@ -80,7 +116,7 @@ pub fn App() -> impl IntoView {
             let document = leptos::prelude::document();
             if let Some(html) = document.document_element() {
                 if prev.is_none() {
-                    // First run: sync signal FROM DOM (what blocking script set)
+                    // First run: sync signal FROM DOM (what blocking script set).
                     let initial_mode = if html.class_name().contains("dark") {
                         ColorMode::Dark
                     } else {
@@ -90,7 +126,7 @@ pub fn App() -> impl IntoView {
                         set_mode.set(initial_mode);
                     }
                 } else {
-                    // Subsequent runs: apply signal to DOM
+                    // Subsequent runs: apply signal to DOM.
                     let class_list = html.class_list();
                     let _ = class_list.remove_2("light", "dark");
                     let _ = class_list.add_1(if matches!(current_mode, ColorMode::Dark) {
@@ -102,10 +138,10 @@ pub fn App() -> impl IntoView {
             }
         }
 
-        true // Return value for prev
+        true
     });
 
-    // Blocking script: runs before body, sets correct theme class immediately
+    // Runs before body so the theme class is set before first paint, preventing FOUC.
     let theme_script = "(function(){var s=document.cookie.match(/(?:^|; )djv-theme=([^;]*)/);var t=s?s[1]:'light';document.documentElement.className=t;})();";
 
     view! {
@@ -177,7 +213,7 @@ pub async fn fetch_projects(filters: ProjectFilters) -> Result<Vec<ProjectData>,
 
         let projects = get_projects(pool, &db_filters)
             .await
-            .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?;
+            .map_err(|e| ServerFnError::new(format!("Database error: {e}")))?;
 
         Ok(projects
             .into_iter()
@@ -219,7 +255,7 @@ pub async fn fetch_topics() -> Result<Vec<String>, ServerFnError> {
 
         let topics = get_distinct_topics(pool)
             .await
-            .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?;
+            .map_err(|e| ServerFnError::new(format!("Database error: {e}")))?;
 
         Ok(topics)
     }
@@ -244,7 +280,7 @@ pub async fn fetch_contributions() -> Result<Vec<ContributionData>, ServerFnErro
 
         let contributions = get_contributions(pool, 10, 2)
             .await
-            .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?;
+            .map_err(|e| ServerFnError::new(format!("Database error: {e}")))?;
 
         Ok(contributions
             .into_iter()
@@ -279,10 +315,10 @@ pub async fn fetch_initial_page_data() -> Result<InitialPageData, ServerFnError>
             tokio::join!(get_distinct_topics(pool), get_contributions(pool, 10, 2));
 
         let topics =
-            topics_result.map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?;
+            topics_result.map_err(|e| ServerFnError::new(format!("Database error: {e}")))?;
 
         let contributions = contributions_result
-            .map_err(|e| ServerFnError::new(format!("Database error: {}", e)))?
+            .map_err(|e| ServerFnError::new(format!("Database error: {e}")))?
             .into_iter()
             .map(|c| ContributionData {
                 repo_name: format!("{}/{}", c.repo_owner, c.repo_name),
@@ -305,48 +341,18 @@ pub async fn fetch_initial_page_data() -> Result<InitialPageData, ServerFnError>
 fn HomePage() -> impl IntoView {
     let query = use_query_map();
 
-    let filters = Memo::new(move |_| {
-        let q = query.get();
-        ProjectFilters {
-            kind: q.get("kind").map(|s| s.to_string()),
-            language: q.get("language").map(|s| s.to_string()),
-            topic: q.get("topic").map(|s| s.to_string()),
-            sort: q.get("sort").map(|s| s.to_string()),
-            limit: None,
-        }
-    });
+    let filters = Memo::new(move |_| query_to_filters(&query.get()));
 
     let projects = Resource::new(
         move || filters.get(),
         |f| async move { fetch_projects(f).await },
     );
-    let initial_data = Resource::new(|| (), |_| async move { fetch_initial_page_data().await });
+    let initial_data = Resource::new(|| (), |()| async move { fetch_initial_page_data().await });
 
     let navigate = leptos_router::hooks::use_navigate();
     let on_filter_change = Callback::new(move |(name, value): (String, Option<String>)| {
-        let current = query.get();
-        let mut params: Vec<(String, String)> = vec![];
-        for key in ["kind", "language", "topic", "sort"] {
-            if let Some(v) = current.get(key) {
-                if name != key {
-                    params.push((key.to_string(), v.to_string()));
-                }
-            }
-        }
-        if let Some(v) = value {
-            params.push((name, v));
-        }
-        let query_string = params
-            .into_iter()
-            .map(|(k, v)| format!("{}={}", k, v))
-            .collect::<Vec<_>>()
-            .join("&");
-        let url = if query_string.is_empty() {
-            "/".to_string()
-        } else {
-            format!("/?{}", query_string)
-        };
-        navigate(&url, Default::default());
+        let url = filter_url(&query.get(), &name, value, "/");
+        navigate(&url, NavigateOptions::default());
     });
     let current_filters = filters;
     let (filter_open, set_filter_open) = signal(false);
@@ -374,7 +380,7 @@ fn HomePage() -> impl IntoView {
                         {move || {
                             let f = current_filters.get();
                             let available_topics = initial_data.get()
-                                .and_then(|r| r.ok())
+                                .and_then(Result::ok)
                                 .map(|d| d.topics)
                                 .unwrap_or_default();
                             view! {
@@ -428,48 +434,18 @@ fn HomePage() -> impl IntoView {
 fn ProjectsPage() -> impl IntoView {
     let query = use_query_map();
 
-    let filters = Memo::new(move |_| {
-        let q = query.get();
-        ProjectFilters {
-            kind: q.get("kind").map(|s| s.to_string()),
-            language: q.get("language").map(|s| s.to_string()),
-            topic: q.get("topic").map(|s| s.to_string()),
-            sort: q.get("sort").map(|s| s.to_string()),
-            limit: None,
-        }
-    });
+    let filters = Memo::new(move |_| query_to_filters(&query.get()));
 
     let projects = Resource::new(
         move || filters.get(),
         |f| async move { fetch_projects(f).await },
     );
-    let topics = Resource::new(|| (), |_| async move { fetch_topics().await });
+    let topics = Resource::new(|| (), |()| async move { fetch_topics().await });
 
     let navigate = leptos_router::hooks::use_navigate();
     let on_filter_change = Callback::new(move |(name, value): (String, Option<String>)| {
-        let current = query.get();
-        let mut params: Vec<(String, String)> = vec![];
-        for key in ["kind", "language", "topic", "sort"] {
-            if let Some(v) = current.get(key) {
-                if name != key {
-                    params.push((key.to_string(), v.to_string()));
-                }
-            }
-        }
-        if let Some(v) = value {
-            params.push((name, v));
-        }
-        let query_string = params
-            .into_iter()
-            .map(|(k, v)| format!("{}={}", k, v))
-            .collect::<Vec<_>>()
-            .join("&");
-        let url = if query_string.is_empty() {
-            "/projects".to_string()
-        } else {
-            format!("/projects?{}", query_string)
-        };
-        navigate(&url, Default::default());
+        let url = filter_url(&query.get(), &name, value, "/projects");
+        navigate(&url, NavigateOptions::default());
     });
     let current_filters = filters;
     let (filter_open, set_filter_open) = signal(false);
@@ -497,7 +473,7 @@ fn ProjectsPage() -> impl IntoView {
                         {move || {
                             let f = current_filters.get();
                             let available_topics = topics.get()
-                                .and_then(|r| r.ok())
+                                .and_then(Result::ok)
                                 .unwrap_or_default();
                             view! {
                                 <FilterBar

@@ -7,6 +7,122 @@ pub struct FilterOption {
     pub active: bool,
 }
 
+fn kinds_for(f: Option<&str>) -> Vec<FilterOption> {
+    vec![
+        FilterOption {
+            value: String::new(),
+            label: "all".to_owned(),
+            active: f.is_none(),
+        },
+        FilterOption {
+            value: "crate".to_owned(),
+            label: "crates".to_owned(),
+            active: f == Some("crate"),
+        },
+        FilterOption {
+            value: "repo".to_owned(),
+            label: "repos".to_owned(),
+            active: f == Some("repo"),
+        },
+    ]
+}
+
+fn languages_for(f: Option<&str>) -> Vec<FilterOption> {
+    vec![
+        FilterOption {
+            value: String::new(),
+            label: "any".to_owned(),
+            active: f.is_none(),
+        },
+        FilterOption {
+            value: "Rust".to_owned(),
+            label: "rust".to_owned(),
+            active: f == Some("Rust"),
+        },
+        FilterOption {
+            value: "TypeScript".to_owned(),
+            label: "typescript".to_owned(),
+            active: f == Some("TypeScript"),
+        },
+        FilterOption {
+            value: "Nix".to_owned(),
+            label: "nix".to_owned(),
+            active: f == Some("Nix"),
+        },
+    ]
+}
+
+fn topics_for(f: Option<&str>, topics: Vec<String>) -> Vec<FilterOption> {
+    std::iter::once(FilterOption {
+        value: String::new(),
+        label: "any".to_owned(),
+        active: f.is_none(),
+    })
+    .chain(topics.into_iter().map(|t| FilterOption {
+        active: f == Some(t.as_str()),
+        value: t.clone(),
+        label: t,
+    }))
+    .collect()
+}
+
+fn sorts_for(f: Option<&str>) -> Vec<FilterOption> {
+    vec![
+        FilterOption {
+            value: "popularity".to_owned(),
+            label: "popular".to_owned(),
+            active: f != Some("name") && f != Some("updated"),
+        },
+        FilterOption {
+            value: "name".to_owned(),
+            label: "name".to_owned(),
+            active: f == Some("name"),
+        },
+        FilterOption {
+            value: "updated".to_owned(),
+            label: "recent".to_owned(),
+            active: f == Some("updated"),
+        },
+    ]
+}
+
+fn render_group(
+    name: &'static str,
+    options: Vec<FilterOption>,
+    on_filter_change: Callback<(String, Option<String>)>,
+) -> impl IntoView {
+    view! {
+        <div class="filter-group">
+            <span class="filter-group__label">{name}</span>
+            <div class="filter-group__options">
+                {options
+                    .into_iter()
+                    .map(|opt| {
+                        let filter_name = name.to_owned();
+                        let value = opt.value.clone();
+                        let class = if opt.active {
+                            "filter-btn filter-btn--active"
+                        } else {
+                            "filter-btn"
+                        };
+                        view! {
+                            <button
+                                class=class
+                                on:click=move |_| {
+                                    let val = if value.is_empty() { None } else { Some(value.clone()) };
+                                    on_filter_change.run((filter_name.clone(), val));
+                                }
+                            >
+                                {opt.label}
+                            </button>
+                        }
+                    })
+                    .collect::<Vec<_>>()}
+            </div>
+        </div>
+    }
+}
+
 #[component]
 pub fn FilterBar(
     kind_filter: Option<String>,
@@ -18,117 +134,29 @@ pub fn FilterBar(
     is_expanded: ReadSignal<bool>,
     set_expanded: WriteSignal<bool>,
 ) -> impl IntoView {
-    let kinds = vec![
-        FilterOption {
-            value: String::new(),
-            label: "all".to_string(),
-            active: kind_filter.is_none(),
-        },
-        FilterOption {
-            value: "crate".to_string(),
-            label: "crates".to_string(),
-            active: kind_filter.as_deref() == Some("crate"),
-        },
-        FilterOption {
-            value: "repo".to_string(),
-            label: "repos".to_string(),
-            active: kind_filter.as_deref() == Some("repo"),
-        },
-    ];
-
-    let languages = vec![
-        FilterOption {
-            value: String::new(),
-            label: "any".to_string(),
-            active: language_filter.is_none(),
-        },
-        FilterOption {
-            value: "Rust".to_string(),
-            label: "rust".to_string(),
-            active: language_filter.as_deref() == Some("Rust"),
-        },
-        FilterOption {
-            value: "TypeScript".to_string(),
-            label: "typescript".to_string(),
-            active: language_filter.as_deref() == Some("TypeScript"),
-        },
-        FilterOption {
-            value: "Nix".to_string(),
-            label: "nix".to_string(),
-            active: language_filter.as_deref() == Some("Nix"),
-        },
-    ];
-
-    let topic_options: Vec<FilterOption> = std::iter::once(FilterOption {
-        value: String::new(),
-        label: "any".to_string(),
-        active: topic_filter.is_none(),
-    })
-    .chain(topics.into_iter().map(|t| FilterOption {
-        value: t.clone(),
-        label: t.clone(),
-        active: topic_filter.as_deref() == Some(&t),
-    }))
-    .collect();
-
-    let sorts = vec![
-        FilterOption {
-            value: "popularity".to_string(),
-            label: "popular".to_string(),
-            active: sort_filter.as_deref() != Some("name")
-                && sort_filter.as_deref() != Some("updated"),
-        },
-        FilterOption {
-            value: "name".to_string(),
-            label: "name".to_string(),
-            active: sort_filter.as_deref() == Some("name"),
-        },
-        FilterOption {
-            value: "updated".to_string(),
-            label: "recent".to_string(),
-            active: sort_filter.as_deref() == Some("updated"),
-        },
-    ];
-
-    let render_group = move |name: &'static str, options: Vec<FilterOption>| {
-        view! {
-            <div class="filter-group">
-                <span class="filter-group__label">{name}</span>
-                <div class="filter-group__options">
-                    {options
-                        .into_iter()
-                        .map(|opt| {
-                            let filter_name = name.to_string();
-                            let value = opt.value.clone();
-                            let class = if opt.active {
-                                "filter-btn filter-btn--active"
-                            } else {
-                                "filter-btn"
-                            };
-                            view! {
-                                <button
-                                    class=class
-                                    on:click=move |_| {
-                                        let val = if value.is_empty() { None } else { Some(value.clone()) };
-                                        on_filter_change.run((filter_name.clone(), val));
-                                    }
-                                >
-                                    {opt.label}
-                                </button>
-                            }
-                        })
-                        .collect::<Vec<_>>()}
-                </div>
-            </div>
-        }
+    struct Selected {
+        kind: Option<String>,
+        language: Option<String>,
+        topic: Option<String>,
+        sort: Option<String>,
+    }
+    let selected = Selected {
+        kind: kind_filter,
+        language: language_filter,
+        topic: topic_filter,
+        sort: sort_filter,
     };
 
-    let show_topics = topic_options.len() > 1;
+    let has_active_filters = selected.kind.is_some()
+        || selected.language.is_some()
+        || selected.topic.is_some()
+        || selected.sort.as_deref().is_some_and(|s| s != "popularity");
 
-    let has_active_filters = kind_filter.is_some()
-        || language_filter.is_some()
-        || topic_filter.is_some()
-        || sort_filter.as_deref().is_some_and(|s| s != "popularity");
+    let kinds = kinds_for(selected.kind.as_deref());
+    let languages = languages_for(selected.language.as_deref());
+    let sorts = sorts_for(selected.sort.as_deref());
+    let topic_options = topics_for(selected.topic.as_deref(), topics);
+    let show_topics = topic_options.len() > 1;
 
     view! {
         <div class="filter-bar">
@@ -160,10 +188,10 @@ pub fn FilterBar(
                 }
             >
                 <div class="filter-bar__panel-inner">
-                    {render_group("kind", kinds.clone())}
-                    {render_group("language", languages.clone())}
-                    {render_group("sort", sorts.clone())}
-                    {show_topics.then(|| render_group("topic", topic_options.clone()))}
+                    {render_group("kind", kinds, on_filter_change)}
+                    {render_group("language", languages, on_filter_change)}
+                    {render_group("sort", sorts, on_filter_change)}
+                    {show_topics.then(|| render_group("topic", topic_options, on_filter_change))}
                 </div>
             </div>
         </div>

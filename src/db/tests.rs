@@ -5,29 +5,56 @@
 //!
 //! Run with: DATABASE_URL="postgres:///djv_test" cargo test --features ssr
 
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::wildcard_imports
+)]
+
 use chrono::Utc;
 use sqlx::PgPool;
 
 use super::models::*;
 use super::queries::*;
 
-// ============================================================================
-// Repository upsert tests
-// ============================================================================
+fn repo<'a>(
+    forge_id: &'a str,
+    name: &'a str,
+    url: &'a str,
+    language: Option<&'a str>,
+    stars: i32,
+    topics: &'a [String],
+) -> NewRepository<'a> {
+    NewRepository {
+        forge: "github",
+        forge_id,
+        name,
+        description: None,
+        url,
+        language,
+        stars,
+        topics,
+        updated_at: None,
+    }
+}
 
 #[sqlx::test(migrations = "./migrations")]
 async fn upsert_repository_insert(pool: PgPool) {
+    let topics = ["rust".to_owned(), "cli".to_owned()];
     let id = upsert_repository(
         &pool,
-        "github",
-        "user/new-repo",
-        "new-repo",
-        Some("A new repository"),
-        "https://github.com/user/new-repo",
-        Some("Rust"),
-        42,
-        &["rust".to_string(), "cli".to_string()],
-        Some(Utc::now()),
+        &NewRepository {
+            forge: "github",
+            forge_id: "user/new-repo",
+            name: "new-repo",
+            description: Some("A new repository"),
+            url: "https://github.com/user/new-repo",
+            language: Some("Rust"),
+            stars: 42,
+            topics: &topics,
+            updated_at: Some(Utc::now()),
+        },
     )
     .await
     .expect("should insert repository");
@@ -37,59 +64,61 @@ async fn upsert_repository_insert(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn upsert_repository_update(pool: PgPool) {
-    // Insert initial
     let id1 = upsert_repository(
         &pool,
-        "github",
-        "user/repo",
-        "repo",
-        Some("Original description"),
-        "https://github.com/user/repo",
-        Some("Rust"),
-        10,
-        &[],
-        None,
+        &NewRepository {
+            forge: "github",
+            forge_id: "user/repo",
+            name: "repo",
+            description: Some("Original description"),
+            url: "https://github.com/user/repo",
+            language: Some("Rust"),
+            stars: 10,
+            topics: &[],
+            updated_at: None,
+        },
     )
     .await
     .expect("should insert");
 
-    // Update same repo
+    let updated_topics = ["updated".to_owned()];
     let id2 = upsert_repository(
         &pool,
-        "github",
-        "user/repo",
-        "repo",
-        Some("Updated description"),
-        "https://github.com/user/repo",
-        Some("Rust"),
-        100,
-        &["updated".to_string()],
-        Some(Utc::now()),
+        &NewRepository {
+            forge: "github",
+            forge_id: "user/repo",
+            name: "repo",
+            description: Some("Updated description"),
+            url: "https://github.com/user/repo",
+            language: Some("Rust"),
+            stars: 100,
+            topics: &updated_topics,
+            updated_at: Some(Utc::now()),
+        },
     )
     .await
     .expect("should update");
 
-    // Should return same ID (upsert)
     assert_eq!(id1, id2);
 }
 
-// ============================================================================
-// Crate upsert tests
-// ============================================================================
-
 #[sqlx::test(migrations = "./migrations")]
 async fn upsert_crate_standalone(pool: PgPool) {
+    let keywords = ["cli".to_owned()];
+    let categories = ["command-line-utilities".to_owned()];
     let id = upsert_crate(
         &pool,
-        "my-crate",
-        Some("A standalone crate"),
-        None, // No repository link
-        "https://crates.io/crates/my-crate",
-        Some("https://docs.rs/my-crate"),
-        1000,
-        Some("1.0.0"),
-        &["cli".to_string()],
-        &["command-line-utilities".to_string()],
+        &NewCrate {
+            name: "my-crate",
+            description: Some("A standalone crate"),
+            repository_id: None,
+            crates_io_url: "https://crates.io/crates/my-crate",
+            documentation_url: Some("https://docs.rs/my-crate"),
+            downloads: 1000,
+            version: Some("1.0.0"),
+            keywords: &keywords,
+            categories: &categories,
+        },
     )
     .await
     .expect("should insert crate");
@@ -99,34 +128,36 @@ async fn upsert_crate_standalone(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn upsert_crate_with_repo_link(pool: PgPool) {
-    // First create a repository
     let repo_id = upsert_repository(
         &pool,
-        "github",
-        "user/my-crate",
-        "my-crate",
-        Some("Source repo"),
-        "https://github.com/user/my-crate",
-        Some("Rust"),
-        50,
-        &[],
-        None,
+        &NewRepository {
+            forge: "github",
+            forge_id: "user/my-crate",
+            name: "my-crate",
+            description: Some("Source repo"),
+            url: "https://github.com/user/my-crate",
+            language: Some("Rust"),
+            stars: 50,
+            topics: &[],
+            updated_at: None,
+        },
     )
     .await
     .expect("should insert repository");
 
-    // Then create crate linked to it
     let crate_id = upsert_crate(
         &pool,
-        "my-crate",
-        Some("A crate with repo"),
-        Some(repo_id),
-        "https://crates.io/crates/my-crate",
-        Some("https://docs.rs/my-crate"),
-        5000,
-        Some("2.0.0"),
-        &[],
-        &[],
+        &NewCrate {
+            name: "my-crate",
+            description: Some("A crate with repo"),
+            repository_id: Some(repo_id),
+            crates_io_url: "https://crates.io/crates/my-crate",
+            documentation_url: Some("https://docs.rs/my-crate"),
+            downloads: 5000,
+            version: Some("2.0.0"),
+            keywords: &[],
+            categories: &[],
+        },
     )
     .await
     .expect("should insert crate");
@@ -134,22 +165,21 @@ async fn upsert_crate_with_repo_link(pool: PgPool) {
     assert!(!crate_id.is_nil());
 }
 
-// ============================================================================
-// NPM package upsert tests
-// ============================================================================
-
 #[sqlx::test(migrations = "./migrations")]
 async fn upsert_npm_package_insert(pool: PgPool) {
+    let keywords = ["typescript".to_owned()];
     let id = upsert_npm_package(
         &pool,
-        "my-package",
-        Some("@scope"),
-        Some("An NPM package"),
-        None,
-        "https://www.npmjs.com/package/my-package",
-        10000,
-        Some("3.0.0"),
-        &["typescript".to_string()],
+        &NewNpmPackage {
+            name: "my-package",
+            scope: Some("@scope"),
+            description: Some("An NPM package"),
+            repository_id: None,
+            npm_url: "https://www.npmjs.com/package/my-package",
+            downloads_weekly: 10_000,
+            version: Some("3.0.0"),
+            keywords: &keywords,
+        },
     )
     .await
     .expect("should insert npm package");
@@ -157,22 +187,20 @@ async fn upsert_npm_package_insert(pool: PgPool) {
     assert!(!id.is_nil());
 }
 
-// ============================================================================
-// Contribution upsert tests
-// ============================================================================
-
 #[sqlx::test(migrations = "./migrations")]
 async fn upsert_contribution_insert(pool: PgPool) {
     let id = upsert_contribution(
         &pool,
-        "github",
-        "rust-lang",
-        "rust",
-        "https://github.com/rust-lang/rust",
-        "pull_request",
-        Some("Fix compiler bug"),
-        "https://github.com/rust-lang/rust/pull/12345",
-        Some(Utc::now()),
+        &NewContribution {
+            forge: "github",
+            repo_owner: "rust-lang",
+            repo_name: "rust",
+            repo_url: "https://github.com/rust-lang/rust",
+            contribution_type: "pull_request",
+            title: Some("Fix compiler bug"),
+            url: "https://github.com/rust-lang/rust/pull/12345",
+            merged_at: Some(Utc::now()),
+        },
     )
     .await
     .expect("should insert contribution");
@@ -184,28 +212,32 @@ async fn upsert_contribution_insert(pool: PgPool) {
 async fn upsert_contribution_update(pool: PgPool) {
     let id1 = upsert_contribution(
         &pool,
-        "github",
-        "owner",
-        "repo",
-        "https://github.com/owner/repo",
-        "pull_request",
-        Some("Original title"),
-        "https://github.com/owner/repo/pull/1",
-        None,
+        &NewContribution {
+            forge: "github",
+            repo_owner: "owner",
+            repo_name: "repo",
+            repo_url: "https://github.com/owner/repo",
+            contribution_type: "pull_request",
+            title: Some("Original title"),
+            url: "https://github.com/owner/repo/pull/1",
+            merged_at: None,
+        },
     )
     .await
     .expect("should insert");
 
     let id2 = upsert_contribution(
         &pool,
-        "github",
-        "owner",
-        "repo",
-        "https://github.com/owner/repo",
-        "pull_request",
-        Some("Updated title"),
-        "https://github.com/owner/repo/pull/1",
-        Some(Utc::now()),
+        &NewContribution {
+            forge: "github",
+            repo_owner: "owner",
+            repo_name: "repo",
+            repo_url: "https://github.com/owner/repo",
+            contribution_type: "pull_request",
+            title: Some("Updated title"),
+            url: "https://github.com/owner/repo/pull/1",
+            merged_at: Some(Utc::now()),
+        },
     )
     .await
     .expect("should update");
@@ -213,24 +245,22 @@ async fn upsert_contribution_update(pool: PgPool) {
     assert_eq!(id1, id2);
 }
 
-// ============================================================================
-// Project query tests
-// ============================================================================
-
 #[sqlx::test(migrations = "./migrations")]
 async fn get_projects_unfiltered(pool: PgPool) {
-    // Insert a repository (will show in projects view)
+    let topics = ["rust".to_owned()];
     upsert_repository(
         &pool,
-        "github",
-        "user/test-repo",
-        "test-repo",
-        Some("Test repository"),
-        "https://github.com/user/test-repo",
-        Some("Rust"),
-        100,
-        &["rust".to_string()],
-        Some(Utc::now()),
+        &NewRepository {
+            forge: "github",
+            forge_id: "user/test-repo",
+            name: "test-repo",
+            description: Some("Test repository"),
+            url: "https://github.com/user/test-repo",
+            language: Some("Rust"),
+            stars: 100,
+            topics: &topics,
+            updated_at: Some(Utc::now()),
+        },
     )
     .await
     .expect("should insert");
@@ -245,39 +275,37 @@ async fn get_projects_unfiltered(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn get_projects_filter_by_kind_crate(pool: PgPool) {
-    // Insert a crate
     upsert_crate(
         &pool,
-        "filter-test-crate",
-        Some("A crate for testing"),
-        None,
-        "https://crates.io/crates/filter-test-crate",
-        None,
-        500,
-        Some("1.0.0"),
-        &[],
-        &[],
+        &NewCrate {
+            name: "filter-test-crate",
+            description: Some("A crate for testing"),
+            repository_id: None,
+            crates_io_url: "https://crates.io/crates/filter-test-crate",
+            documentation_url: None,
+            downloads: 500,
+            version: Some("1.0.0"),
+            keywords: &[],
+            categories: &[],
+        },
     )
     .await
     .expect("should insert crate");
 
-    // Insert a repo
     upsert_repository(
         &pool,
-        "github",
-        "user/filter-test-repo",
-        "filter-test-repo",
-        None,
-        "https://github.com/user/filter-test-repo",
-        Some("Python"),
-        10,
-        &[],
-        None,
+        &repo(
+            "user/filter-test-repo",
+            "filter-test-repo",
+            "https://github.com/user/filter-test-repo",
+            Some("Python"),
+            10,
+            &[],
+        ),
     )
     .await
     .expect("should insert repo");
 
-    // Filter by crate
     let filters = ProjectFilters {
         kind: Some(ProjectKind::Crate),
         ..Default::default()
@@ -291,41 +319,36 @@ async fn get_projects_filter_by_kind_crate(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn get_projects_filter_by_language(pool: PgPool) {
-    // Insert Rust repo
     upsert_repository(
         &pool,
-        "github",
-        "user/rust-project",
-        "rust-project",
-        None,
-        "https://github.com/user/rust-project",
-        Some("Rust"),
-        50,
-        &[],
-        None,
+        &repo(
+            "user/rust-project",
+            "rust-project",
+            "https://github.com/user/rust-project",
+            Some("Rust"),
+            50,
+            &[],
+        ),
     )
     .await
     .expect("should insert");
 
-    // Insert Python repo
     upsert_repository(
         &pool,
-        "github",
-        "user/python-project",
-        "python-project",
-        None,
-        "https://github.com/user/python-project",
-        Some("Python"),
-        50,
-        &[],
-        None,
+        &repo(
+            "user/python-project",
+            "python-project",
+            "https://github.com/user/python-project",
+            Some("Python"),
+            50,
+            &[],
+        ),
     )
     .await
     .expect("should insert");
 
-    // Filter by Rust
     let filters = ProjectFilters {
-        language: Some("Rust".to_string()),
+        language: Some("Rust".to_owned()),
         ..Default::default()
     };
 
@@ -338,41 +361,38 @@ async fn get_projects_filter_by_language(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn get_projects_filter_by_topic(pool: PgPool) {
-    // Insert repo with topic
+    let otel_topics = ["opentelemetry".to_owned(), "tracing".to_owned()];
     upsert_repository(
         &pool,
-        "github",
-        "user/otel-project",
-        "otel-project",
-        None,
-        "https://github.com/user/otel-project",
-        Some("Rust"),
-        100,
-        &["opentelemetry".to_string(), "tracing".to_string()],
-        None,
+        &repo(
+            "user/otel-project",
+            "otel-project",
+            "https://github.com/user/otel-project",
+            Some("Rust"),
+            100,
+            &otel_topics,
+        ),
     )
     .await
     .expect("should insert");
 
-    // Insert repo without topic
+    let other_topics = ["other".to_owned()];
     upsert_repository(
         &pool,
-        "github",
-        "user/other-project",
-        "other-project",
-        None,
-        "https://github.com/user/other-project",
-        Some("Rust"),
-        50,
-        &["other".to_string()],
-        None,
+        &repo(
+            "user/other-project",
+            "other-project",
+            "https://github.com/user/other-project",
+            Some("Rust"),
+            50,
+            &other_topics,
+        ),
     )
     .await
     .expect("should insert");
 
-    // Filter by topic
     let filters = ProjectFilters {
-        topic: Some("opentelemetry".to_string()),
+        topic: Some("opentelemetry".to_owned()),
         ..Default::default()
     };
 
@@ -380,27 +400,17 @@ async fn get_projects_filter_by_topic(pool: PgPool) {
 
     assert!(projects
         .iter()
-        .all(|p| p.topics.contains(&"opentelemetry".to_string())));
+        .all(|p| p.topics.contains(&"opentelemetry".to_owned())));
 }
 
 #[sqlx::test(migrations = "./migrations")]
 async fn get_projects_sort_by_name(pool: PgPool) {
-    // Insert repos with different names
     for name in ["zebra", "alpha", "middle"] {
-        upsert_repository(
-            &pool,
-            "github",
-            &format!("user/{}", name),
-            name,
-            None,
-            &format!("https://github.com/user/{}", name),
-            Some("Rust"),
-            50,
-            &[],
-            None,
-        )
-        .await
-        .expect("should insert");
+        let forge_id = format!("user/{name}");
+        let url = format!("https://github.com/user/{name}");
+        upsert_repository(&pool, &repo(&forge_id, name, &url, Some("Rust"), 50, &[]))
+            .await
+            .expect("should insert");
     }
 
     let filters = ProjectFilters {
@@ -410,7 +420,6 @@ async fn get_projects_sort_by_name(pool: PgPool) {
 
     let projects = get_projects(&pool, &filters).await.expect("should query");
 
-    // Check alphabetical order
     let names: Vec<_> = projects.iter().map(|p| p.name.as_str()).collect();
     let mut sorted_names = names.clone();
     sorted_names.sort();
@@ -419,33 +428,30 @@ async fn get_projects_sort_by_name(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn get_projects_sort_by_popularity(pool: PgPool) {
-    // Insert repos with different star counts
     upsert_repository(
         &pool,
-        "github",
-        "user/popular",
-        "popular",
-        None,
-        "https://github.com/user/popular",
-        Some("Rust"),
-        1000,
-        &[],
-        None,
+        &repo(
+            "user/popular",
+            "popular",
+            "https://github.com/user/popular",
+            Some("Rust"),
+            1000,
+            &[],
+        ),
     )
     .await
     .expect("should insert");
 
     upsert_repository(
         &pool,
-        "github",
-        "user/unpopular",
-        "unpopular",
-        None,
-        "https://github.com/user/unpopular",
-        Some("Rust"),
-        10,
-        &[],
-        None,
+        &repo(
+            "user/unpopular",
+            "unpopular",
+            "https://github.com/user/unpopular",
+            Some("Rust"),
+            10,
+            &[],
+        ),
     )
     .await
     .expect("should insert");
@@ -457,30 +463,28 @@ async fn get_projects_sort_by_popularity(pool: PgPool) {
 
     let projects = get_projects(&pool, &filters).await.expect("should query");
 
-    // First should be more popular
     if projects.len() >= 2 {
         assert!(projects[0].popularity >= projects[1].popularity);
     }
 }
 
-// ============================================================================
-// Contributions query tests
-// ============================================================================
-
 #[sqlx::test(migrations = "./migrations")]
 async fn get_contributions_with_limit(pool: PgPool) {
-    // Insert multiple contributions
     for i in 1..=5 {
+        let title = format!("PR {i}");
+        let url = format!("https://github.com/owner/repo/pull/{i}");
         upsert_contribution(
             &pool,
-            "github",
-            "owner",
-            "repo",
-            "https://github.com/owner/repo",
-            "pull_request",
-            Some(&format!("PR {}", i)),
-            &format!("https://github.com/owner/repo/pull/{}", i),
-            Some(Utc::now()),
+            &NewContribution {
+                forge: "github",
+                repo_owner: "owner",
+                repo_name: "repo",
+                repo_url: "https://github.com/owner/repo",
+                contribution_type: "pull_request",
+                title: Some(&title),
+                url: &url,
+                merged_at: Some(Utc::now()),
+            },
         )
         .await
         .expect("should insert");
@@ -493,48 +497,45 @@ async fn get_contributions_with_limit(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn get_distinct_topics_returns_unique(pool: PgPool) {
-    // Insert repos with overlapping topics
+    let topics_1 = ["rust".to_owned(), "cli".to_owned()];
     upsert_repository(
         &pool,
-        "github",
-        "user/repo1",
-        "repo1",
-        None,
-        "https://github.com/user/repo1",
-        Some("Rust"),
-        50,
-        &["rust".to_string(), "cli".to_string()],
-        None,
+        &repo(
+            "user/repo1",
+            "repo1",
+            "https://github.com/user/repo1",
+            Some("Rust"),
+            50,
+            &topics_1,
+        ),
     )
     .await
     .expect("should insert");
 
+    let topics_2 = ["rust".to_owned(), "web".to_owned()];
     upsert_repository(
         &pool,
-        "github",
-        "user/repo2",
-        "repo2",
-        None,
-        "https://github.com/user/repo2",
-        Some("Rust"),
-        50,
-        &["rust".to_string(), "web".to_string()],
-        None,
+        &repo(
+            "user/repo2",
+            "repo2",
+            "https://github.com/user/repo2",
+            Some("Rust"),
+            50,
+            &topics_2,
+        ),
     )
     .await
     .expect("should insert");
 
     let topics = get_distinct_topics(&pool).await.expect("should query");
 
-    // Should have unique topics
     let unique_count = topics.len();
     let mut deduped = topics.clone();
     deduped.sort();
     deduped.dedup();
     assert_eq!(unique_count, deduped.len());
 
-    // Should contain expected topics
-    assert!(topics.contains(&"rust".to_string()));
-    assert!(topics.contains(&"cli".to_string()));
-    assert!(topics.contains(&"web".to_string()));
+    assert!(topics.contains(&"rust".to_owned()));
+    assert!(topics.contains(&"cli".to_owned()));
+    assert!(topics.contains(&"web".to_owned()));
 }

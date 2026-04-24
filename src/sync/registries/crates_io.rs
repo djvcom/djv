@@ -24,6 +24,7 @@ pub struct CrateSummary {
 }
 
 impl CratesIoRegistry {
+    #[must_use]
     pub fn new(username: String) -> Self {
         Self {
             client: reqwest::Client::new(),
@@ -31,6 +32,7 @@ impl CratesIoRegistry {
         }
     }
 
+    #[must_use]
     pub fn from_env() -> Option<Self> {
         let username = std::env::var("DJV_CRATES_IO_USER").ok()?;
         Some(Self::new(username))
@@ -38,7 +40,7 @@ impl CratesIoRegistry {
 
     #[tracing::instrument(skip(self))]
     async fn get_user_id(&self) -> Result<i64, SyncError> {
-        let url = format!("{}/users/{}", CRATES_IO_API_BASE, self.username);
+        let url = format!("{CRATES_IO_API_BASE}/users/{}", self.username);
 
         let response: UserResponse = self
             .client
@@ -53,6 +55,8 @@ impl CratesIoRegistry {
         Ok(response.user.id)
     }
 
+    /// # Errors
+    /// Returns a [`SyncError`] for any HTTP or deserialisation failure.
     #[tracing::instrument(skip(self), fields(username = %self.username))]
     pub async fn fetch_crates(&self) -> Result<Vec<CrateSummary>, SyncError> {
         let user_id = self.get_user_id().await?;
@@ -61,10 +65,8 @@ impl CratesIoRegistry {
         let mut page = 1;
 
         loop {
-            let url = format!(
-                "{}/crates?user_id={}&page={}&per_page=100",
-                CRATES_IO_API_BASE, user_id, page
-            );
+            let url =
+                format!("{CRATES_IO_API_BASE}/crates?user_id={user_id}&page={page}&per_page=100",);
 
             let response: CratesResponse = self
                 .client
@@ -85,7 +87,7 @@ impl CratesIoRegistry {
                 repository_url: c.repository,
                 crates_io_url: format!("https://crates.io/crates/{}", c.name),
                 documentation_url: c.documentation,
-                downloads: c.downloads as i32,
+                downloads: i32::try_from(c.downloads).unwrap_or(i32::MAX),
                 version: c.newest_version,
                 keywords: Vec::new(),
                 categories: Vec::new(),

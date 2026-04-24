@@ -42,7 +42,7 @@ where
             .headers()
             .get("x-forwarded-proto")
             .and_then(|v| v.to_str().ok())
-            .map(|s| s.to_owned());
+            .map(str::to_owned);
 
         let port = req
             .headers()

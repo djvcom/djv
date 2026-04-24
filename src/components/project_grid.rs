@@ -57,6 +57,7 @@ pub fn ProjectGrid(projects: Vec<ProjectData>) -> impl IntoView {
             }
         })
         .collect();
+    drop(projects);
 
     view! {
         {sections

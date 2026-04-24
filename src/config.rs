@@ -28,13 +28,13 @@ fn default_listen() -> String {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct DatabaseConfig {
-    /// PostgreSQL connection URL
+    /// `PostgreSQL` connection URL
     pub url: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct OtelConfig {
-    /// OTLP endpoint (if None, uses OTEL_EXPORTER_OTLP_ENDPOINT env var)
+    /// OTLP endpoint (if None, uses `OTEL_EXPORTER_OTLP_ENDPOINT` env var)
     pub endpoint: Option<String>,
 
     /// Deployment environment name
@@ -148,36 +148,34 @@ impl Config {
     /// Load configuration from environment variables.
     ///
     /// Supports the following env vars:
-    /// - DJV_LISTEN
-    /// - DJV_DATABASE_URL or DATABASE_URL
-    /// - DJV_OTEL_ENDPOINT
-    /// - DJV_OTEL_ENVIRONMENT
-    /// - DJV_SYNC_ENABLED
-    /// - DJV_SYNC_INTERVAL_SECS
-    /// - DJV_SYNC_GITHUB_USER
-    /// - DJV_SYNC_GITHUB_TOKEN
-    /// - DJV_SYNC_CRATES_IO_USER
-    /// - DJV_SYNC_NPM_USER
-    /// - DJV_SYNC_CONTRIBUTIONS_USER
-    #[allow(clippy::result_large_err)]
-    pub fn load() -> Result<Self, figment::Error> {
-        // Start with defaults
+    /// - `DJV_LISTEN`
+    /// - `DJV_DATABASE_URL` or `DATABASE_URL`
+    /// - `DJV_OTEL_ENDPOINT`
+    /// - `DJV_OTEL_ENVIRONMENT`
+    /// - `DJV_SYNC_ENABLED`
+    /// - `DJV_SYNC_INTERVAL_SECS`
+    /// - `DJV_SYNC_GITHUB_USER`
+    /// - `DJV_SYNC_GITHUB_TOKEN`
+    /// - `DJV_SYNC_CRATES_IO_USER`
+    /// - `DJV_SYNC_NPM_USER`
+    /// - `DJV_SYNC_CONTRIBUTIONS_USER`
+    ///
+    /// # Errors
+    /// Returns a boxed [`figment::Error`] if env-var parsing fails (e.g. a malformed value).
+    pub fn load() -> Result<Self, Box<figment::Error>> {
         let figment = Figment::new()
             .merge(Serialized::defaults(ConfigDefaults::default()))
-            // Merge DJV_ prefixed env vars with nested structure
             .merge(Env::prefixed("DJV_").split("_"));
 
-        // Extract base config
-        let mut config: Config = figment.extract()?;
+        let mut config: Config = figment.extract().map_err(Box::new)?;
 
-        // Handle DATABASE_URL without prefix for compatibility
+        // DATABASE_URL without the DJV_ prefix is a common deployment convention.
         if config.database.is_none() {
             if let Ok(url) = std::env::var("DATABASE_URL") {
                 config.database = Some(DatabaseConfig { url });
             }
         }
 
-        // Handle legacy flat env vars for backwards compatibility
         config.apply_legacy_env_vars();
 
         Ok(config)
@@ -185,7 +183,6 @@ impl Config {
 
     /// Apply legacy flat environment variables for backwards compatibility
     fn apply_legacy_env_vars(&mut self) {
-        // DJV_GITHUB_USER -> sync.github.user
         if self.sync.github.is_none() {
             if let Ok(user) = std::env::var("DJV_GITHUB_USER") {
                 let token = std::env::var("DJV_GITHUB_TOKEN").ok();
@@ -193,21 +190,18 @@ impl Config {
             }
         }
 
-        // DJV_CRATES_IO_USER -> sync.crates_io.user
         if self.sync.crates_io.is_none() {
             if let Ok(user) = std::env::var("DJV_CRATES_IO_USER") {
                 self.sync.crates_io = Some(CratesIoConfig { user });
             }
         }
 
-        // DJV_NPM_USER -> sync.npm.user
         if self.sync.npm.is_none() {
             if let Ok(user) = std::env::var("DJV_NPM_USER") {
                 self.sync.npm = Some(NpmConfig { user });
             }
         }
 
-        // DJV_GITLAB_USER -> sync.gitlab.user
         if self.sync.gitlab.is_none() {
             if let Ok(user) = std::env::var("DJV_GITLAB_USER") {
                 let host =
@@ -216,14 +210,12 @@ impl Config {
             }
         }
 
-        // DJV_CONTRIBUTIONS_USER -> sync.contributions.user
         if self.sync.contributions.is_none() {
             if let Ok(user) = std::env::var("DJV_CONTRIBUTIONS_USER") {
                 self.sync.contributions = Some(ContributionsConfig { user });
             }
         }
 
-        // DJV_SYNC_INTERVAL -> sync.interval_secs
         if let Ok(interval) = std::env::var("DJV_SYNC_INTERVAL") {
             if let Ok(secs) = interval.parse() {
                 self.sync.interval_secs = secs;

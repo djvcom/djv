@@ -7,13 +7,11 @@ pub fn ThemeToggle() -> impl IntoView {
     let theme = expect_context::<ThemeContext>();
 
     let toggle = move |_| {
-        let current = theme.mode.get();
-        let next = match current {
+        let next = match theme.mode.get() {
             ColorMode::Light => ColorMode::Dark,
-            _ => ColorMode::Light,
+            ColorMode::Dark => ColorMode::Light,
         };
 
-        // Save to cookie via JS
         #[cfg(target_arch = "wasm32")]
         {
             use leptos::wasm_bindgen::prelude::wasm_bindgen;

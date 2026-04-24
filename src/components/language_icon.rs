@@ -14,7 +14,7 @@ fn icon_path(language: &str) -> &'static str {
 pub fn LanguageIcon(language: String, #[prop(optional)] clickable: bool) -> impl IntoView {
     let path = icon_path(&language);
     let filter_url = format!("/?language={}", language.to_lowercase());
-    let title = format!("Filter by {}", language);
+    let title = format!("Filter by {language}");
 
     if clickable {
         view! {

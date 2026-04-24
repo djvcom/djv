@@ -91,7 +91,7 @@ impl std::str::FromStr for ProjectKind {
             "crate" => Ok(ProjectKind::Crate),
             "npm" => Ok(ProjectKind::Npm),
             "repo" => Ok(ProjectKind::Repo),
-            _ => Err(format!("unknown project kind: {}", s)),
+            _ => Err(format!("unknown project kind: {s}")),
         }
     }
 }
@@ -142,7 +142,7 @@ impl std::str::FromStr for SortOrder {
             "popularity" => Ok(SortOrder::Popularity),
             "name" => Ok(SortOrder::Name),
             "updated" => Ok(SortOrder::Updated),
-            _ => Err(format!("unknown sort order: {}", s)),
+            _ => Err(format!("unknown sort order: {s}")),
         }
     }
 }

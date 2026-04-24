@@ -13,14 +13,16 @@ pub struct GitLabForge {
 }
 
 impl GitLabForge {
+    #[must_use]
     pub fn new(username: String, host: Option<String>) -> Self {
         Self {
             client: reqwest::Client::new(),
-            host: host.unwrap_or_else(|| "gitlab.com".to_string()),
+            host: host.unwrap_or_else(|| "gitlab.com".to_owned()),
             username,
         }
     }
 
+    #[must_use]
     pub fn from_env() -> Option<Self> {
         let username = std::env::var("DJV_GITLAB_USER").ok()?;
         let host = std::env::var("DJV_GITLAB_HOST").ok();
@@ -48,7 +50,6 @@ impl GitLabForge {
             .send()
             .await?;
 
-        // Check for rate limiting
         if response.status() == reqwest::StatusCode::TOO_MANY_REQUESTS {
             let retry_after = response
                 .headers()
@@ -81,12 +82,11 @@ impl SyncSource for GitLabForge {
 
             tracing::debug!(page, count, "fetched page");
 
-            // Filter out archived projects and forks
             all_repos.extend(
                 projects
                     .into_iter()
                     .filter(|p| !p.archived && p.forked_from_project.is_none())
-                    .map(|p| p.into()),
+                    .map(Into::into),
             );
 
             if count < 100 {

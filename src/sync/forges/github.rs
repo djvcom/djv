@@ -14,6 +14,7 @@ pub struct GitHubForge {
 }
 
 impl GitHubForge {
+    #[must_use]
     pub fn new(username: String, token: Option<String>) -> Self {
         Self {
             client: reqwest::Client::new(),
@@ -22,6 +23,7 @@ impl GitHubForge {
         }
     }
 
+    #[must_use]
     pub fn from_env() -> Option<Self> {
         let username = std::env::var("DJV_GITHUB_USER").ok()?;
         let token = std::env::var("DJV_GITHUB_TOKEN").ok();
@@ -43,12 +45,11 @@ impl GitHubForge {
             .header(ACCEPT, "application/vnd.github+json");
 
         if let Some(ref token) = self.token {
-            request = request.header(AUTHORIZATION, format!("Bearer {}", token));
+            request = request.header(AUTHORIZATION, format!("Bearer {token}"));
         }
 
         let response = request.send().await?;
 
-        // Check for rate limiting
         if response.status() == reqwest::StatusCode::FORBIDDEN {
             if let Some(reset) = response
                 .headers()
@@ -87,7 +88,7 @@ impl SyncSource for GitHubForge {
 
             tracing::debug!(page, count, "fetched page");
 
-            all_repos.extend(repos.into_iter().filter(|r| !r.fork).map(|r| r.into()));
+            all_repos.extend(repos.into_iter().filter(|r| !r.fork).map(Into::into));
 
             if count < 100 {
                 break;

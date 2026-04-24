@@ -4,7 +4,7 @@ async fn main() -> anyhow::Result<()> {
     use anyhow::Context;
     use axum::Router;
     use axum_tracing_opentelemetry::middleware::{OtelAxumLayer, OtelInResponseLayer};
-    use djv::app::*;
+    use djv::app::{app, shell};
     use djv::config::Config;
     use djv::proxy_headers::RecordProxyHeadersLayer;
     use djv::state::AppState;
@@ -15,10 +15,8 @@ async fn main() -> anyhow::Result<()> {
     };
     use tower_http::compression::CompressionLayer;
 
-    // Load configuration
     let config = Config::load().context("failed to load configuration")?;
 
-    // Build OTel SDK
     let mut otel_builder = OtelSdkBuilder::new()
         .service_name(env!("CARGO_PKG_NAME"))
         .service_version(env!("CARGO_PKG_VERSION"))
@@ -32,7 +30,6 @@ async fn main() -> anyhow::Result<()> {
         .resource_attribute("vcs.ref.head.name", env!("VCS_REF_HEAD_NAME"))
         .resource_attribute("vcs.ref.head.type", "branch");
 
-    // Only set endpoint if explicitly configured, otherwise let OTEL_* env vars take effect
     if let Some(ref endpoint) = config.otel.endpoint {
         otel_builder = otel_builder.endpoint(endpoint);
     }
@@ -42,7 +39,6 @@ async fn main() -> anyhow::Result<()> {
         .build()
         .context("failed to initialise OpenTelemetry")?;
 
-    // Initialise database pool if configured
     let db_pool = if let Some(ref db_config) = config.database {
         match djv::db::init_pool_with_url(&db_config.url).await {
             Ok(pool) => {
@@ -62,76 +58,13 @@ async fn main() -> anyhow::Result<()> {
         None
     };
 
-    // Spawn background sync task if database is available
     if let Some(ref pool) = db_pool {
-        use djv::sync::{
-            forges::{GitHubForge, GitLabForge},
-            spawn_sync_task, ContributionsSync, CratesIoRegistry, NpmRegistry, SyncSource,
-            SyncSources,
-        };
-
-        let mut forges: Vec<Box<dyn SyncSource>> = Vec::new();
-
-        if let Some(ref github_config) = config.sync.github {
-            forges.push(Box::new(GitHubForge::new(
-                github_config.user.clone(),
-                github_config.token.clone(),
-            )));
-        }
-
-        if let Some(ref gitlab_config) = config.sync.gitlab {
-            forges.push(Box::new(GitLabForge::new(
-                gitlab_config.user.clone(),
-                Some(gitlab_config.host.clone()),
-            )));
-        }
-
-        let crates_io = config
-            .sync
-            .crates_io
-            .as_ref()
-            .map(|c| CratesIoRegistry::new(c.user.clone()));
-
-        let npm = config
-            .sync
-            .npm
-            .as_ref()
-            .map(|n| NpmRegistry::new(n.user.clone()));
-
-        let contributions = config.sync.contributions.as_ref().map(|c| {
-            let mut sync = ContributionsSync::new(
-                c.user.clone(),
-                config.sync.github.as_ref().and_then(|g| g.token.clone()),
-                config.sync.github.as_ref().map(|g| g.user.clone()),
-            );
-
-            // Add GitLab contributions if configured
-            if let Some(ref gitlab_config) = config.sync.gitlab {
-                sync =
-                    sync.with_gitlab(gitlab_config.user.clone(), Some(gitlab_config.host.clone()));
-            }
-
-            sync
-        });
-
-        let sources = SyncSources {
-            forges,
-            crates_io,
-            npm,
-            contributions,
-        };
-
-        let sync_config = djv::sync::SyncConfig {
-            enabled: config.sync.enabled,
-            interval_secs: config.sync.interval_secs,
-        };
-
-        spawn_sync_task(pool.clone(), sources, sync_config);
+        start_sync(pool.clone(), &config);
     }
 
     let leptos_conf = get_configuration(None).context("failed to load Leptos configuration")?;
     let leptos_options = leptos_conf.leptos_options;
-    let routes = generate_route_list(App);
+    let routes = generate_route_list(app);
 
     let mut app = Router::new()
         .leptos_routes(&leptos_options, routes, {
@@ -145,11 +78,9 @@ async fn main() -> anyhow::Result<()> {
         .layer(RecordProxyHeadersLayer)
         .with_state(leptos_options);
 
-    // Add app state as extension
     let app_state = AppState { pool: db_pool };
     app = app.layer(axum::Extension(app_state));
 
-    // Use configured listen address
     let addr: std::net::SocketAddr = config
         .listen
         .parse()
@@ -166,9 +97,69 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[cfg(not(feature = "ssr"))]
-pub fn main() {
-    // no client-side main function
-    // unless we want this to work with e.g., Trunk for pure client-side testing
-    // see lib.rs for hydration function instead
+#[cfg(feature = "ssr")]
+fn start_sync(pool: sqlx::PgPool, config: &djv::config::Config) {
+    use djv::sync::{
+        forges::{GitHubForge, GitLabForge},
+        spawn_sync_task, ContributionsSync, CratesIoRegistry, NpmRegistry, SyncSource, SyncSources,
+    };
+
+    let mut forges: Vec<Box<dyn SyncSource>> = Vec::new();
+
+    if let Some(ref github_config) = config.sync.github {
+        forges.push(Box::new(GitHubForge::new(
+            github_config.user.clone(),
+            github_config.token.clone(),
+        )));
+    }
+
+    if let Some(ref gitlab_config) = config.sync.gitlab {
+        forges.push(Box::new(GitLabForge::new(
+            gitlab_config.user.clone(),
+            Some(gitlab_config.host.clone()),
+        )));
+    }
+
+    let crates_io = config
+        .sync
+        .crates_io
+        .as_ref()
+        .map(|c| CratesIoRegistry::new(c.user.clone()));
+
+    let npm = config
+        .sync
+        .npm
+        .as_ref()
+        .map(|n| NpmRegistry::new(n.user.clone()));
+
+    let contributions = config.sync.contributions.as_ref().map(|c| {
+        let mut sync = ContributionsSync::new(
+            c.user.clone(),
+            config.sync.github.as_ref().and_then(|g| g.token.clone()),
+            config.sync.github.as_ref().map(|g| g.user.clone()),
+        );
+
+        if let Some(ref gitlab_config) = config.sync.gitlab {
+            sync = sync.with_gitlab(gitlab_config.user.clone(), Some(gitlab_config.host.clone()));
+        }
+
+        sync
+    });
+
+    let sources = SyncSources {
+        forges,
+        crates_io,
+        npm,
+        contributions,
+    };
+
+    let sync_config = djv::sync::SyncConfig {
+        enabled: config.sync.enabled,
+        interval_secs: config.sync.interval_secs,
+    };
+
+    spawn_sync_task(pool, sources, &sync_config);
 }
+
+#[cfg(not(feature = "ssr"))]
+pub fn main() {}

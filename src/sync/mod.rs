@@ -62,6 +62,7 @@ impl Default for SyncConfig {
 }
 
 impl SyncConfig {
+    #[must_use]
     pub fn from_env() -> Self {
         let enabled = std::env::var("DJV_SYNC_ENABLED")
             .map(|v| v == "true" || v == "1")
@@ -88,6 +89,7 @@ pub struct SyncSources {
 }
 
 impl SyncSources {
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.forges.is_empty()
             && self.crates_io.is_none()
@@ -96,24 +98,22 @@ impl SyncSources {
     }
 }
 
+/// # Errors
+/// Returns the first [`SyncError`] from any underlying forge/registry sync.
 #[tracing::instrument(skip(pool, sources))]
 pub async fn run_sync(pool: &PgPool, sources: &SyncSources) -> Result<(), SyncError> {
-    // Sync forges (repositories)
     for source in &sources.forges {
         sync_forge(pool, source.as_ref()).await?;
     }
 
-    // Sync crates.io
     if let Some(ref crates_io) = sources.crates_io {
         sync_crates(pool, crates_io).await?;
     }
 
-    // Sync npm
     if let Some(ref npm) = sources.npm {
         sync_npm(pool, npm).await?;
     }
 
-    // Sync contributions
     if let Some(ref contributions) = sources.contributions {
         sync_contributions(pool, contributions).await?;
     }
@@ -129,14 +129,12 @@ async fn sync_forge(pool: &PgPool, source: &dyn SyncSource) -> Result<(), SyncEr
     let count = repositories.len();
     let forge_name = source.name();
 
-    // Collect IDs of all synced repositories
     let mut synced_ids = Vec::with_capacity(count);
     for repo in repositories {
         let id = upsert_repository(pool, &repo).await?;
         synced_ids.push(id);
     }
 
-    // Remove repositories that no longer exist on this forge
     let deleted = crate::db::delete_stale_repositories(pool, forge_name, &synced_ids).await?;
     if deleted > 0 {
         tracing::info!(deleted, "removed stale repositories");
@@ -169,15 +167,17 @@ async fn sync_crates(pool: &PgPool, crates_io: &CratesIoRegistry) -> Result<(), 
 
         crate::db::upsert_crate(
             pool,
-            &krate.name,
-            krate.description.as_deref(),
-            repository_id,
-            &krate.crates_io_url,
-            krate.documentation_url.as_deref(),
-            krate.downloads,
-            krate.version.as_deref(),
-            &krate.keywords,
-            &krate.categories,
+            &crate::db::NewCrate {
+                name: &krate.name,
+                description: krate.description.as_deref(),
+                repository_id,
+                crates_io_url: &krate.crates_io_url,
+                documentation_url: krate.documentation_url.as_deref(),
+                downloads: krate.downloads,
+                version: krate.version.as_deref(),
+                keywords: &krate.keywords,
+                categories: &krate.categories,
+            },
         )
         .await?;
 
@@ -211,14 +211,16 @@ async fn sync_npm(pool: &PgPool, npm: &NpmRegistry) -> Result<(), SyncError> {
 
         crate::db::upsert_npm_package(
             pool,
-            &pkg.name,
-            pkg.scope.as_deref(),
-            pkg.description.as_deref(),
-            repository_id,
-            &pkg.npm_url,
-            pkg.downloads_weekly,
-            pkg.version.as_deref(),
-            &pkg.keywords,
+            &crate::db::NewNpmPackage {
+                name: &pkg.name,
+                scope: pkg.scope.as_deref(),
+                description: pkg.description.as_deref(),
+                repository_id,
+                npm_url: &pkg.npm_url,
+                downloads_weekly: pkg.downloads_weekly,
+                version: pkg.version.as_deref(),
+                keywords: &pkg.keywords,
+            },
         )
         .await?;
 
@@ -242,14 +244,16 @@ async fn sync_contributions(
     for contrib in contributions {
         crate::db::upsert_contribution(
             pool,
-            &contrib.forge,
-            &contrib.repo_owner,
-            &contrib.repo_name,
-            &contrib.repo_url,
-            &contrib.contribution_type,
-            contrib.title.as_deref(),
-            &contrib.url,
-            contrib.merged_at,
+            &crate::db::NewContribution {
+                forge: &contrib.forge,
+                repo_owner: &contrib.repo_owner,
+                repo_name: &contrib.repo_name,
+                repo_url: &contrib.repo_url,
+                contribution_type: &contrib.contribution_type,
+                title: contrib.title.as_deref(),
+                url: &contrib.url,
+                merged_at: contrib.merged_at,
+            },
         )
         .await?;
 
@@ -267,15 +271,17 @@ async fn upsert_repository(
 ) -> Result<uuid::Uuid, SyncError> {
     let id = crate::db::upsert_repository(
         pool,
-        &repo.forge,
-        &repo.forge_id,
-        &repo.name,
-        repo.description.as_deref(),
-        &repo.url,
-        repo.language.as_deref(),
-        repo.stars,
-        &repo.topics,
-        repo.updated_at,
+        &crate::db::NewRepository {
+            forge: &repo.forge,
+            forge_id: &repo.forge_id,
+            name: &repo.name,
+            description: repo.description.as_deref(),
+            url: &repo.url,
+            language: repo.language.as_deref(),
+            stars: repo.stars,
+            topics: &repo.topics,
+            updated_at: repo.updated_at,
+        },
     )
     .await?;
 
@@ -283,7 +289,7 @@ async fn upsert_repository(
     Ok(id)
 }
 
-pub fn spawn_sync_task(pool: PgPool, sources: SyncSources, config: SyncConfig) {
+pub fn spawn_sync_task(pool: PgPool, sources: SyncSources, config: &SyncConfig) {
     if !config.enabled {
         tracing::info!("sync disabled");
         return;
@@ -294,8 +300,9 @@ pub fn spawn_sync_task(pool: PgPool, sources: SyncSources, config: SyncConfig) {
         return;
     }
 
+    let interval_secs = config.interval_secs;
     tokio::spawn(async move {
-        let mut ticker = interval(Duration::from_secs(config.interval_secs));
+        let mut ticker = interval(Duration::from_secs(interval_secs));
 
         // Run immediately on startup
         if let Err(e) = run_sync(&pool, &sources).await {
@@ -311,5 +318,5 @@ pub fn spawn_sync_task(pool: PgPool, sources: SyncSources, config: SyncConfig) {
         }
     });
 
-    tracing::info!(interval_secs = config.interval_secs, "sync task spawned");
+    tracing::info!(interval_secs, "sync task spawned");
 }

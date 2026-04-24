@@ -28,6 +28,7 @@ pub struct FetchedContribution {
 }
 
 impl ContributionsSync {
+    #[must_use]
     pub fn new(username: String, token: Option<String>, exclude_owner: Option<String>) -> Self {
         Self {
             client: reqwest::Client::new(),
@@ -39,12 +40,14 @@ impl ContributionsSync {
         }
     }
 
+    #[must_use]
     pub fn with_gitlab(mut self, username: String, host: Option<String>) -> Self {
         self.gitlab_username = Some(username);
         self.gitlab_host = host;
         self
     }
 
+    #[must_use]
     pub fn from_env() -> Option<Self> {
         let username = std::env::var("DJV_CONTRIBUTIONS_USER").ok()?;
         let token = std::env::var("DJV_GITHUB_TOKEN").ok();
@@ -52,7 +55,6 @@ impl ContributionsSync {
 
         let mut sync = Self::new(username, token, exclude_owner);
 
-        // Add GitLab if configured
         if let Ok(gitlab_user) = std::env::var("DJV_GITLAB_USER") {
             let gitlab_host = std::env::var("DJV_GITLAB_HOST").ok();
             sync = sync.with_gitlab(gitlab_user, gitlab_host);
@@ -61,15 +63,16 @@ impl ContributionsSync {
         Some(sync)
     }
 
+    /// # Errors
+    /// Returns a [`SyncError`] if any upstream HTTP call fails hard (non-rate-limit network errors).
+    /// `GitLab` errors are logged and swallowed; only `GitHub` failures propagate.
     #[tracing::instrument(skip(self), fields(username = %self.username))]
     pub async fn fetch_contributions(&self) -> Result<Vec<FetchedContribution>, SyncError> {
         let mut all_contributions = Vec::new();
 
-        // Fetch GitHub contributions
         let github_contribs = self.fetch_github_contributions().await?;
         all_contributions.extend(github_contribs);
 
-        // Fetch GitLab contributions if configured
         if self.gitlab_username.is_some() {
             match self.fetch_gitlab_contributions().await {
                 Ok(gitlab_contribs) => all_contributions.extend(gitlab_contribs),
@@ -110,7 +113,6 @@ impl ContributionsSync {
 
     #[tracing::instrument(skip(self))]
     async fn fetch_github_page(&self, page: u32) -> Result<Vec<FetchedContribution>, SyncError> {
-        // Search for merged PRs by the user
         let query = format!(
             "type:pr author:{} is:merged -user:{}",
             self.username,
@@ -131,12 +133,11 @@ impl ContributionsSync {
             .header(ACCEPT, "application/vnd.github+json");
 
         if let Some(ref token) = self.token {
-            request = request.header(AUTHORIZATION, format!("Bearer {}", token));
+            request = request.header(AUTHORIZATION, format!("Bearer {token}"));
         }
 
         let response = request.send().await?;
 
-        // Check for rate limiting
         if response.status() == reqwest::StatusCode::FORBIDDEN {
             if let Some(reset) = response
                 .headers()
@@ -172,7 +173,7 @@ impl ContributionsSync {
                     forge: "github".to_string(),
                     repo_owner: repo_owner.clone(),
                     repo_name: repo_name.clone(),
-                    repo_url: format!("https://github.com/{}/{}", repo_owner, repo_name),
+                    repo_url: format!("https://github.com/{repo_owner}/{repo_name}"),
                     contribution_type: "pr".to_string(),
                     title: Some(item.title),
                     url: item.html_url,
@@ -186,9 +187,8 @@ impl ContributionsSync {
 
     #[tracing::instrument(skip(self))]
     async fn fetch_gitlab_contributions(&self) -> Result<Vec<FetchedContribution>, SyncError> {
-        let username = match &self.gitlab_username {
-            Some(u) => u,
-            None => return Ok(Vec::new()),
+        let Some(username) = self.gitlab_username.as_deref() else {
+            return Ok(Vec::new());
         };
 
         let host = self.gitlab_host.as_deref().unwrap_or("gitlab.com");
@@ -226,10 +226,8 @@ impl ContributionsSync {
         host: &str,
         page: u32,
     ) -> Result<Vec<FetchedContribution>, SyncError> {
-        // Fetch merged MRs by the user, excluding their own projects
         let url = format!(
-            "https://{}/api/v4/merge_requests?author_username={}&state=merged&scope=all&per_page=100&page={}",
-            host, username, page
+            "https://{host}/api/v4/merge_requests?author_username={username}&state=merged&scope=all&per_page=100&page={page}",
         );
 
         let response = self
@@ -239,7 +237,6 @@ impl ContributionsSync {
             .send()
             .await?;
 
-        // Check for rate limiting
         if response.status() == reqwest::StatusCode::TOO_MANY_REQUESTS {
             let retry_after = response
                 .headers()
@@ -252,14 +249,11 @@ impl ContributionsSync {
 
         let merge_requests: Vec<GitLabMergeRequest> = response.error_for_status()?.json().await?;
 
-        // Filter out MRs to the user's own projects and map to contributions
         let contributions = merge_requests
             .into_iter()
             .filter_map(|mr| {
-                // Parse project info from web_url
                 let (repo_owner, repo_name, repo_url) = mr.parse_project_info()?;
 
-                // Exclude MRs to the user's own projects
                 if repo_owner.eq_ignore_ascii_case(username) {
                     return None;
                 }
@@ -289,13 +283,12 @@ struct GitLabMergeRequest {
 }
 
 impl GitLabMergeRequest {
-    /// Parse project owner and name from the MR web_url.
-    /// Format: https://gitlab.com/owner/repo/-/merge_requests/1
+    /// Parse project owner and name from the MR `web_url`.
+    /// Format: `<https://gitlab.com/owner/repo/-/merge_requests/1>`
     fn parse_project_info(&self) -> Option<(String, String, String)> {
         let url = &self.web_url;
-        // Remove the /-/merge_requests/N suffix
+        // Strip `/-/merge_requests/N` so only the project URL remains.
         let project_part = url.split("/-/merge_requests").next()?;
-        // Parse the URL to get the path
         let parsed = reqwest::Url::parse(project_part).ok()?;
         let path = parsed.path().trim_start_matches('/');
         let parts: Vec<&str> = path.split('/').collect();

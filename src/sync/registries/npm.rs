@@ -24,6 +24,7 @@ pub struct NpmPackageSummary {
 }
 
 impl NpmRegistry {
+    #[must_use]
     pub fn new(username: String) -> Self {
         Self {
             client: reqwest::Client::new(),
@@ -31,16 +32,19 @@ impl NpmRegistry {
         }
     }
 
+    #[must_use]
     pub fn from_env() -> Option<Self> {
         let username = std::env::var("DJV_NPM_USER").ok()?;
         Some(Self::new(username))
     }
 
+    /// # Errors
+    /// Returns a [`SyncError`] for any HTTP or deserialisation failure while listing packages.
     #[tracing::instrument(skip(self), fields(username = %self.username))]
     pub async fn fetch_packages(&self) -> Result<Vec<NpmPackageSummary>, SyncError> {
         let url = format!(
-            "{}/-/v1/search?text=maintainer:{}&size=250",
-            NPM_REGISTRY_API, self.username
+            "{NPM_REGISTRY_API}/-/v1/search?text=maintainer:{}&size=250",
+            self.username,
         );
 
         let response: SearchResponse = self
@@ -75,10 +79,8 @@ impl NpmRegistry {
                 (None, pkg.name.as_str())
             };
 
-            // Fetch weekly downloads for this package
             let downloads = self.fetch_downloads(&pkg.name).await.unwrap_or(0);
 
-            // Extract repository URL from links
             let repository_url = pkg
                 .links
                 .as_ref()
@@ -107,7 +109,7 @@ impl NpmRegistry {
     }
 
     async fn fetch_downloads(&self, package_name: &str) -> Result<i32, SyncError> {
-        let url = format!("{}/{}", NPM_DOWNLOADS_API, package_name);
+        let url = format!("{NPM_DOWNLOADS_API}/{package_name}");
 
         let response: DownloadsResponse = self
             .client
@@ -119,7 +121,7 @@ impl NpmRegistry {
             .json()
             .await?;
 
-        Ok(response.downloads as i32)
+        Ok(i32::try_from(response.downloads).unwrap_or(i32::MAX))
     }
 }
 
