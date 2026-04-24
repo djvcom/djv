@@ -45,8 +45,11 @@ pub fn ProjectGrid(projects: Vec<ProjectData>) -> impl IntoView {
     let sections: Vec<_> = GROUPS
         .iter()
         .filter_map(|g| {
-            let items: Vec<ProjectData> =
-                projects.iter().filter(|p| p.kind == g.kind).cloned().collect();
+            let items: Vec<ProjectData> = projects
+                .iter()
+                .filter(|p| p.kind == g.kind)
+                .cloned()
+                .collect();
             if items.is_empty() {
                 None
             } else {

@@ -44,13 +44,10 @@ pub fn ProjectCard(
         None
     };
 
-    let meta_parts: Vec<String> = [
-        version.map(|v| format!("v{}", v)),
-        updated_at,
-    ]
-    .into_iter()
-    .flatten()
-    .collect();
+    let meta_parts: Vec<String> = [version.map(|v| format!("v{}", v)), updated_at]
+        .into_iter()
+        .flatten()
+        .collect();
     let meta_text = meta_parts.join("  ·  ");
 
     let description_el = description.filter(|d| !d.is_empty()).map(|d| {

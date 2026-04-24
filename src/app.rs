@@ -532,4 +532,3 @@ fn ProjectsPage() -> impl IntoView {
         </div>
     }
 }
-

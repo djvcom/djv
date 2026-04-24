@@ -18,7 +18,6 @@ pub fn FilterBar(
     is_expanded: ReadSignal<bool>,
     set_expanded: WriteSignal<bool>,
 ) -> impl IntoView {
-
     let kinds = vec![
         FilterOption {
             value: String::new(),
