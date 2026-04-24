@@ -1,3 +1,7 @@
+// Leptos's `view!` macro produces deeply nested `HtmlElement<...>` types; the larger views
+// (ProjectGrid, FilterBar) push rustc's layout query past the default depth of 128.
+#![recursion_limit = "512"]
+
 pub mod app;
 pub mod components;
 
