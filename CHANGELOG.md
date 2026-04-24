@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.6](https://github.com/djvcom/djv/compare/v0.7.5...v0.7.6) - 2026-04-24
+
+### Other
+
+- bump crate recursion_limit to 512 for Leptos view types
+
 ## [0.7.5](https://github.com/djvcom/djv/compare/v0.7.4...v0.7.5) - 2026-04-24
 
 ### Other
