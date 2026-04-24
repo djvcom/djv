@@ -36,7 +36,8 @@ pub fn ProjectCard(
 
     let metric = if popularity > 0 {
         let (value, unit) = match kind.as_deref() {
-            Some("crate") | Some("npm") => (format_number(popularity), "dl"),
+            Some("crate") => (format_number(popularity), "dl"),
+            Some("npm") => (format_number(popularity), "dl/wk"),
             _ => (format!("★ {}", format_number(popularity)), ""),
         };
         Some((value, unit))

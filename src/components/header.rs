@@ -37,10 +37,9 @@ pub fn Masthead() -> impl IntoView {
                     <a href="https://github.com/djvcom" target="_blank" rel="noopener noreferrer">
                         "github.com/djvcom"
                     </a>
-                    <a href="https://crates.io/users/djv" target="_blank" rel="noopener noreferrer">
-                        "crates.io/users/djv"
+                    <a href="https://crates.io/users/djvcom" target="_blank" rel="noopener noreferrer">
+                        "crates.io/users/djvcom"
                     </a>
-                    <span>"daniel@djv.sh"</span>
                 </nav>
             </div>
         </aside>
